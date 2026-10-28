@@ -2,7 +2,7 @@
 // PERMISSIONS — Role-Based Access Control
 // ============================================================================
 
-import type { RequestStatus, UserRole } from '@/types/types';
+import type { UserRole } from '@/types/types';
 
 export type AppRoute =
   | '/dashboard'
@@ -154,7 +154,8 @@ export const PERMISSIONS: Record<UserRole, RolePermission> = {
   },
 };
 
-import { getFeatureByRoute, DEFAULT_FEATURES_BY_ROLE } from './features';
+import { FEATURE_DEFINITIONS, getFeatureByRoute, DEFAULT_FEATURES_BY_ROLE } from './features';
+import type { AppFeature } from './features';
 import type { Profile } from '@/types/types';
 
 export function getRolePermissions(role?: UserRole | null): RolePermission | null {
@@ -162,30 +163,70 @@ export function getRolePermissions(role?: UserRole | null): RolePermission | nul
   return PERMISSIONS[role] ?? null;
 }
 
+function routeIsCoveredBy(allowedRoute: string, route: string): boolean {
+  return route === allowedRoute || route.startsWith(`${allowedRoute}/`);
+}
+
+const ROLE_LOCKED_FEATURES: Partial<Record<AppFeature, UserRole[]>> = {
+  ADMIN_PANEL: ['admin', 'owner'],
+  USERS: ['admin', 'owner'],
+  CMS: ['owner'],
+};
+
+// These are intentionally operational capabilities, not a change of job title.
+// They have matching database enforcement, so an admin may grant them to staff
+// from another role without creating a client-side-only permission.
+const CROSS_ROLE_GRANTABLE_FEATURES: AppFeature[] = ['DELIVERY', 'MY_INVENTORY', 'COURIER'];
+
+export function canRoleUseFeature(role: UserRole | null | undefined, featureId: AppFeature): boolean {
+  if (!role) return false;
+  const feature = FEATURE_DEFINITIONS.find((item) => item.id === featureId);
+  if (!feature) return false;
+  if (feature.clientOnly) return role === 'client';
+  if (role === 'client') return false;
+  const lockedRoles = ROLE_LOCKED_FEATURES[featureId];
+  return !lockedRoles || lockedRoles.includes(role);
+}
+
+/**
+ * Default features are assigned when a role is created or reset. They are not
+ * a hard ceiling: an administrator can add explicitly grantable operations.
+ */
+export function getAllowedFeaturesForRole(role?: UserRole | null): AppFeature[] {
+  if (!role) return [];
+
+  const defaults = DEFAULT_FEATURES_BY_ROLE[role] ?? [];
+  return defaults.filter((featureId) => canRoleUseFeature(role, featureId));
+}
+
+export function getGrantableFeaturesForRole(role?: UserRole | null): AppFeature[] {
+  if (!role) return [];
+  const defaults = getAllowedFeaturesForRole(role);
+  return [...new Set([...defaults, ...CROSS_ROLE_GRANTABLE_FEATURES])]
+    .filter((featureId) => canRoleUseFeature(role, featureId));
+}
+
+export function getEffectiveFeatures(profile: Profile | undefined | null): AppFeature[] {
+  if (!profile) return [];
+
+  const assigned = (profile.features ?? []) as AppFeature[];
+  const requested = assigned.length > 0 ? assigned : getAllowedFeaturesForRole(profile.role);
+  return requested.filter((featureId) => canRoleUseFeature(profile.role, featureId));
+}
+
 /**
  * Validates if a Profile has access to a specific route.
- * Instead of checking hardcoded route lists by role, it maps the route to its Feature
- *, and validates if the Profile's features array includes it.
+ * Feature grants can extend approved operational modules without changing a
+ * user's role. Unmapped utility routes remain role-owned.
  */
 export function canAccessRoute(profile: Profile | undefined | null, route: string): boolean {
   if (!profile) return false;
 
   const feature = getFeatureByRoute(route);
-  
-  // If the route doesn't map to a feature flag, check fallback (for things like /dashboard which is default)
-  // or default to false to be strictly secure.
-  if (!feature) {
-    // Basic shared routes that don't need a feature flag
-    if (route === '/dashboard' || route === '/dashboard/settings' || route === '/dashboard/notifications') return true;
-    return false;
-  }
+  if (feature) return getEffectiveFeatures(profile).includes(feature.id);
 
-  let userFeatures = profile.features || [];
-  if (userFeatures.length === 0) {
-    userFeatures = DEFAULT_FEATURES_BY_ROLE[profile.role] || [];
-  }
-
-  return userFeatures.includes(feature.id);
+  const permissions = getRolePermissions(profile.role);
+  return Boolean(permissions?.routes.some((allowedRoute) => routeIsCoveredBy(allowedRoute, route)));
 }
 
 export function canReadEntity(role: UserRole | undefined | null, entity: EntityScope): boolean {

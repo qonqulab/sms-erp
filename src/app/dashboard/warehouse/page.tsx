@@ -9,7 +9,7 @@ import { inventoryService, workflowEngine, authService } from '@/lib/services';
 import { requireAuthUser } from '@/lib/db';
 import { DashboardSkeleton } from '@/components/ui/LoadingSkeleton';
 import { ErrorState } from '@/components/ui/ErrorState';
-import type { DbRequest, InventoryLog, Actor } from '@/types/types';
+import type { DbRequest, Actor } from '@/types/types';
 
 import { useBranch } from '@/hooks/useBranch';
 import { WarehouseConsole } from '@/components/dashboard/WarehouseConsole';
@@ -59,7 +59,9 @@ export default function WarehouseDashboard() {
   }, [activeBranchId]);
 
   useEffect(() => {
-    if (profile) refresh();
+    if (!profile) return;
+    const refreshTimer = window.setTimeout(() => void refresh(), 0);
+    return () => window.clearTimeout(refreshTimer);
   }, [profile, refresh, activeBranchId]);
 
   // Realtime subscriptions
@@ -76,11 +78,9 @@ export default function WarehouseDashboard() {
       try {
         const actor = await getActor();
 
-        // When preparing, consume stock first
-        if (status === 'preparing') {
-          await inventoryService.consumeStockForPreparing(request, actor);
-        }
-
+        // The workflow RPC consumes stock and advances the status in one
+        // database transaction. Do not consume it here as well: doing both
+        // would decrement the same request twice.
         await workflowEngine.transition({
           request,
           actorId: actor.id,

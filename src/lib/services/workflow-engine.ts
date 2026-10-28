@@ -4,7 +4,7 @@
 // ============================================================================
 
 import { requireAuthUser } from '@/lib/db';
-import { requestsDb, invoicesDb, notificationsDb, profilesDb, activityLogsDb, systemLogsDb, requestStatusLogsDb } from '@/lib/db';
+import { requestsDb, notificationsDb, profilesDb, activityLogsDb, systemLogsDb, requestStatusLogsDb } from '@/lib/db';
 import type { DbRequest, RequestStatus, UserRole, NotificationType } from '@/types/types';
 import { supabase } from '@/lib/supabase';
 import { autoApproveService } from './auto-approve-service';
@@ -136,6 +136,7 @@ export interface TransitionInput {
   actorId: string;
   actorEmail?: string;
   actorRole: UserRole;
+  actorFeatures?: string[];
   nextStatus: RequestStatus;
   message: string;
   action: string;
@@ -151,7 +152,7 @@ export interface TransitionInput {
 // VALIDATION
 // ============================================================================
 
-function validateTransition(input: TransitionInput): void {
+function validateTransition(input: TransitionInput, actorCanDeliver: boolean): void {
   const { actorRole, request, nextStatus, extraUpdates } = input;
   const roleMap = TRANSITION_MAP[actorRole];
 
@@ -159,8 +160,10 @@ function validateTransition(input: TransitionInput): void {
     throw new Error(`Unknown role: ${actorRole}`);
   }
 
+  const deliveryTransition = (request.status === 'ready' && input.nextStatus === 'on_delivery')
+    || (request.status === 'on_delivery' && input.nextStatus === 'delivered');
   const allowed = roleMap[request.status] ?? [];
-  if (!allowed.includes(nextStatus)) {
+  if (!allowed.includes(nextStatus) && !(actorCanDeliver && deliveryTransition)) {
     throw new Error(
       `Role "${actorRole}" cannot transition from "${request.status}" to "${nextStatus}"`
     );
@@ -184,7 +187,7 @@ function validateTransition(input: TransitionInput): void {
 // ============================================================================
 
 async function runSideEffects(input: TransitionInput, updatedRequest: DbRequest): Promise<void> {
-  const { nextStatus, actorId, actorEmail, actorRole, message } = input;
+  const { nextStatus, actorId, actorEmail, message } = input;
 
   // 1. Auto-create invoice when transitioning to invoice_ready
   if (nextStatus === 'invoice_ready') {
@@ -278,7 +281,25 @@ async function runSideEffects(input: TransitionInput, updatedRequest: DbRequest)
 
 export const workflowEngine = {
   async transition(input: TransitionInput): Promise<DbRequest> {
-    await requireAuthUser();
+    const authenticatedUser = await requireAuthUser();
+
+    if (authenticatedUser.id !== input.actorId) {
+      throw new Error('Workflow actor does not match the authenticated user');
+    }
+
+    const authenticatedProfile = await profilesDb.getById(authenticatedUser.id);
+    if (!authenticatedProfile?.is_active) {
+      throw new Error('Authenticated user does not have an active profile');
+    }
+    if (authenticatedProfile.role !== input.actorRole) {
+      throw new Error('Workflow role does not match the authenticated profile');
+    }
+
+    const actorCanDeliver = authenticatedProfile.role === 'technician'
+      || authenticatedProfile.role === 'courier'
+      || (authenticatedProfile.features ?? []).some((feature) =>
+        feature === 'DELIVERY' || feature === 'MY_INVENTORY' || feature === 'COURIER'
+      );
 
     if (!input.actorRole) {
       throw new Error('Actor role is required for workflow transition');
@@ -288,7 +309,7 @@ export const workflowEngine = {
 
     try {
       // Validate
-      validateTransition(input);
+      validateTransition(input, actorCanDeliver);
 
       const now = new Date().toISOString();
 

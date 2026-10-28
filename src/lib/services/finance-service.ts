@@ -157,7 +157,8 @@ export const financeService = {
       .from('monthly_closing')
       .select('*')
       .eq('branch_id', branchId)
-      .eq('month', periodStr)
+      .eq('month', month)
+      .eq('year', year)
       .order('created_at', { ascending: false })
       .limit(1)
       .single();

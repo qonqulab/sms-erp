@@ -7,11 +7,11 @@ if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
   throw new Error('Missing NEXT_PUBLIC_SUPABASE_ANON_KEY');
 }
 
-const globalForSupabase = global as unknown as { supabase: SupabaseClient<any, "public", any> };
+const globalForSupabase = global as unknown as { supabase: SupabaseClient };
 
 export const supabase =
   globalForSupabase.supabase ||
-  createClient<any, "public", any>(
+  createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     {

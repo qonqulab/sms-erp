@@ -46,7 +46,7 @@ export default async function SolutionPage({ params }: SolutionPageProps) {
 
       {/* Content */}
       <div className="max-w-6xl mx-auto px-6 sm:px-8 lg:px-12 -mt-20">
-        <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-2xl overflow-hidden border border-white/50">
+        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
           <div className="p-12 lg:p-20">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-start">
               {/* Description & CTA */}

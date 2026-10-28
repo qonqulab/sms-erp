@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
@@ -10,38 +10,57 @@ import BranchIndicator from '@/components/layout/BranchIndicator';
 const Navbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [hasScrolled, setHasScrolled] = useState(false);
   const { profile, logout, loading: authLoading } = useAuth();
   const router = useRouter();
+
+  useEffect(() => {
+    const updateScrollState = () => setHasScrolled(window.scrollY > 24);
+    updateScrollState();
+    window.addEventListener('scroll', updateScrollState, { passive: true });
+    return () => window.removeEventListener('scroll', updateScrollState);
+  }, []);
 
   const handleLogout = async () => {
     await logout();
     router.push('/login');
   };
 
+  const useSolidSurface = hasScrolled || mobileOpen;
+  const surfaceClass = useSolidSurface
+    ? 'border-gray-200 bg-white shadow-sm'
+    : 'border-transparent bg-transparent';
+  const foregroundClass = useSolidSurface
+    ? 'text-[var(--apple-text-primary)]'
+    : 'text-white';
+  const mutedForegroundClass = useSolidSurface
+    ? 'text-[var(--apple-text-secondary)] hover:text-[var(--apple-text-primary)]'
+    : 'text-white hover:text-white';
+
   return (
-    <nav className="fixed inset-x-0 top-0 z-[100] border-b border-gray-200 bg-white">
+    <nav className={`fixed inset-x-0 top-0 z-[100] border-b transition-[background-color,border-color,box-shadow] duration-300 ease-out ${surfaceClass}`}>
       <div className="mx-auto max-w-7xl px-4 sm:px-6">
         <div className="flex h-16 items-center lg:h-[4.5rem]">
 
           {/* LEFT: LOGO */}
           <div className="flex-1 flex items-center">
-            <Link href="/" className="text-2xl font-black text-[var(--apple-text-primary)] tracking-tighter">
+            <Link href="/" className={`text-2xl font-black tracking-tighter transition-colors duration-300 ${foregroundClass}`}>
               ORION
             </Link>
           </div>
 
           {/* CENTER: MENU TENGAH */}
           <div className="hidden flex-1 items-center justify-center gap-8 md:flex">
-            <Link href="/#about" className="text-sm font-medium text-[var(--apple-text-secondary)] transition-colors hover:text-[var(--apple-text-primary)]">
+            <Link href="/#about" className={`text-sm font-medium transition-colors duration-300 ${mutedForegroundClass}`}>
               About
             </Link>
-            <Link href="/#products" className="text-sm font-medium text-[var(--apple-text-secondary)] transition-colors hover:text-[var(--apple-text-primary)]">
+            <Link href="/#products" className={`text-sm font-medium transition-colors duration-300 ${mutedForegroundClass}`}>
               Products
             </Link>
-            <Link href="/#solutions" className="text-sm font-medium text-[var(--apple-text-secondary)] transition-colors hover:text-[var(--apple-text-primary)]">
+            <Link href="/#solutions" className={`text-sm font-medium transition-colors duration-300 ${mutedForegroundClass}`}>
               Services
             </Link>
-            <Link href="/#contact" className="text-sm font-medium text-[var(--apple-text-secondary)] transition-colors hover:text-[var(--apple-text-primary)]">
+            <Link href="/#contact" className={`text-sm font-medium transition-colors duration-300 ${mutedForegroundClass}`}>
               Contact
             </Link>
           </div>
@@ -51,8 +70,8 @@ const Navbar = () => {
             {authLoading ? (
               /* Skeleton while auth is resolving */
               <div className="flex items-center gap-3">
-                <div className="h-5 w-20 animate-pulse rounded-full bg-gray-200" />
-                <div className="h-9 w-9 animate-pulse rounded-full bg-gray-200" />
+                <div className={`h-5 w-20 rounded-full ${useSolidSurface ? 'bg-gray-200' : 'bg-white/70'}`} />
+                <div className={`h-9 w-9 rounded-full ${useSolidSurface ? 'bg-gray-200' : 'bg-white/70'}`} />
               </div>
             ) : profile ? (
               <>
@@ -104,7 +123,7 @@ const Navbar = () => {
             ) : (
               <Link
                 href="/login"
-                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+                className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors duration-200 ${useSolidSurface ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-white text-gray-900 hover:bg-gray-100'}`}
               >
                 Get Started
               </Link>
@@ -113,7 +132,7 @@ const Navbar = () => {
             {/* Mobile menu btn */}
             <button
               onClick={() => setMobileOpen((prev) => !prev)}
-              className="ml-1 rounded-lg bg-[var(--apple-gray-bg)] px-3 py-2 text-xs font-medium text-[var(--apple-text-primary)] md:hidden"
+              className={`ml-1 rounded-lg border px-3 py-2 text-xs font-medium transition-colors duration-300 md:hidden ${useSolidSurface ? 'border-gray-200 bg-gray-50 text-[var(--apple-text-primary)] hover:bg-gray-100' : 'border-white/70 bg-transparent text-white hover:border-white'}`}
             >
               {mobileOpen ? 'Close' : 'Menu'}
             </button>

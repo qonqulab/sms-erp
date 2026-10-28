@@ -78,7 +78,7 @@ export default function CourierDashboard() {
   // Build actor
   const getActor = useCallback(async (): Promise<Actor> => {
     const user = await requireAuthUser();
-    return { id: user.id, email: user.email ?? profile?.email, role };
+    return { id: user.id, email: user.email ?? profile?.email, role, features: profile?.features };
   }, [profile, role]);
 
   const { data: orders = [], mutate: refreshOrders, error: errorOrders } = useSWR(

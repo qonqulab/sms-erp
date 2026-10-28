@@ -56,11 +56,16 @@ async function fetchProductsByIds(productIds: string[]) {
 }
 
 async function hasPreparationLogs(orderId: string) {
-  // Since order_id is removed from inventory_logs, we might need another way to check.
-  // However, the user said order_id MUST NOT be there.
-  // For now, I'll return false to avoid blocking, but this logic is technically broken 
-  // without order_id tracking in inventory_logs.
-  return false;
+  const { data, error } = await supabase
+    .from('inventory_logs')
+    .select('id')
+    .eq('order_id', orderId)
+    .eq('movement_type', 'SALES_OUT')
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  return Boolean(data);
 }
 
 async function insertInventoryLog(log: Omit<InventoryLog, 'id' | 'created_at' | 'product'>) {
@@ -125,7 +130,7 @@ export const inventoryService = {
       });
 
       return {
-        requests: (requestRes.data || []) as any[],
+        requests: (requestRes.data || []) as DbRequest[],
         products: (productRes.data || []) as Product[],
         inventoryLogs: (logRes.data || []) as InventoryLog[],
       };

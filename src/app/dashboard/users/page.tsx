@@ -5,16 +5,16 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useBranch } from '@/hooks/useBranch';
 import { useRealtimeTable } from '@/hooks/useRealtimeTable';
-import { canAccessRoute } from '@/lib/permissions';
+import { canAccessRoute, getAllowedFeaturesForRole, getEffectiveFeatures, getGrantableFeaturesForRole } from '@/lib/permissions';
 import { profilesDb } from '@/lib/db';
 import { formatCurrency } from '@/lib/format-utils';
 import { DashboardSkeleton, EmptyState, ErrorState } from '@/components/ui';
 import type { Profile, UserRole } from '@/types/types';
 import { supabase } from '@/lib/db/client';
-import { FEATURE_DEFINITIONS, DEFAULT_FEATURES_BY_ROLE } from '@/lib/features';
+import { FEATURE_DEFINITIONS } from '@/lib/features';
 import type { AppFeature } from '@/lib/features';
 
-const ALL_ROLES: UserRole[] = ['client', 'marketing', 'boss', 'finance', 'warehouse', 'technician', 'admin', 'owner', 'tax', 'director', 'manager', 'purchasing', 'claim_officer', 'faktur'];
+const ALL_ROLES: UserRole[] = ['client', 'marketing', 'boss', 'finance', 'warehouse', 'technician', 'courier', 'admin', 'owner', 'tax', 'director', 'manager', 'purchasing', 'claim_officer', 'faktur'];
 const PAGE_SIZE = 25;
 
 export default function UsersManagementPage() {
@@ -69,7 +69,8 @@ export default function UsersManagementPage() {
 
   useEffect(() => {
     if (!profile) return;
-    void refresh();
+    const refreshTimer = window.setTimeout(() => void refresh(), 0);
+    return () => window.clearTimeout(refreshTimer);
   }, [profile, refresh, activeBranchId]);
 
   // ---------- Realtime subscriptions ----------
@@ -82,9 +83,10 @@ export default function UsersManagementPage() {
   const handleUpdateRole = useCallback(async (userId: string, email: string, newRole: UserRole) => {
     setSaving(email);
     try {
-      await profilesDb.update(userId, { role: newRole });
+      const features = getAllowedFeaturesForRole(newRole);
+      await profilesDb.update(userId, { role: newRole, features });
       setUsers((prev) =>
-        prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u))
+        prev.map((u) => (u.id === userId ? { ...u, role: newRole, features } : u))
       );
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to update role');
@@ -366,23 +368,24 @@ export default function UsersManagementPage() {
 
                 {/* Feature Management Panel */}
                 {expandedFeatureUserId === user.id && (() => {
-                  const rawFeatures = (user.features || []) as AppFeature[];
-                  const userFeatures = rawFeatures.length > 0 ? rawFeatures : (DEFAULT_FEATURES_BY_ROLE[user.role] || []);
+                  const userFeatures = getEffectiveFeatures(user);
+                  const allowedFeatures = getGrantableFeaturesForRole(user.role);
+                  const allowedFeatureDefinitions = FEATURE_DEFINITIONS.filter((feature) => allowedFeatures.includes(feature.id));
                   const featureLookup = new Map(FEATURE_DEFINITIONS.map(f => [f.id, f]));
                   return (
                   <div className="mt-4 border-t border-gray-100 pt-4 animate-in slide-in-from-top-2">
                     <div className="flex items-center justify-between mb-3">
-                      <h4 className="text-xs font-black text-gray-900 uppercase tracking-widest">Fitur Sidebar yang Diizinkan</h4>
+                      <h4 className="text-xs font-black text-gray-900 uppercase tracking-widest">Fitur Operasional</h4>
                       <div className="flex gap-2">
                         <button
-                          onClick={() => handleBulkToggle(user.id, FEATURE_DEFINITIONS.filter(f => !f.clientOnly).map(f => f.id), true)}
+                          onClick={() => handleBulkToggle(user.id, allowedFeatures, true)}
                           disabled={saving === user.id}
                           className="text-[10px] font-bold text-green-600 hover:underline disabled:opacity-50"
                         >Centang Semua</button>
                         <span className="text-gray-300">|</span>
                         <button
                           onClick={async () => {
-                            const defaults = DEFAULT_FEATURES_BY_ROLE[user.role] || [];
+                            const defaults = getAllowedFeaturesForRole(user.role);
                             setSaving(user.id);
                             try {
                               const { error } = await supabase.from('profiles').update({ features: defaults }).eq('id', user.id);
@@ -400,9 +403,13 @@ export default function UsersManagementPage() {
                       </div>
                     </div>
 
+                    <p className="mb-3 text-xs leading-relaxed text-gray-500">
+                      Role tetap sama. Admin dapat menambahkan fitur operasional seperti Delivery tanpa mengubah jabatan user. Akses administratif tetap dikunci berdasarkan role.
+                    </p>
+
                     {/* Checkbox grid */}
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                      {FEATURE_DEFINITIONS.filter(f => !f.clientOnly).map(feat => {
+                      {allowedFeatureDefinitions.map(feat => {
                         const isActive = userFeatures.includes(feat.id);
                         return (
                           <label

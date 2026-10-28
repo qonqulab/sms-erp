@@ -10,6 +10,16 @@ const MAX_PROOF_SIZE = 10 * 1024 * 1024; // 10MB
 
 const SUB_STATUS_ORDER: DeliverySubStatus[] = ['otw', 'arrived', 'delivering', 'completed'];
 
+function canDeliver(actor: Actor): boolean {
+  return actor.role === 'technician'
+    || actor.role === 'courier'
+    || actor.features?.some((feature) => ['DELIVERY', 'MY_INVENTORY', 'COURIER'].includes(feature)) === true;
+}
+
+function actsAsCourier(actor: Actor): boolean {
+  return actor.role === 'courier' || actor.features?.includes('COURIER') === true;
+}
+
 export const deliveryService = {
   // ── Technician Dashboard ──────────────────────────────────────────────
   async getTechnicianDashboard(technicianId: string) {
@@ -59,6 +69,7 @@ export const deliveryService = {
 
   // ── Shared: Upload Proof ──────────────────────────────────────────────
   async uploadProof(file: File, orderId: string, _actor: Actor): Promise<string> {
+    void _actor;
     if (!ALLOWED_PROOF_TYPES.includes(file.type)) {
       throw new Error(`Invalid file type. Allowed: PNG, JPG, JPEG, WEBP`);
     }
@@ -73,13 +84,13 @@ export const deliveryService = {
 
   // ── Start Delivery (Technician or Courier) ────────────────────────────
   async startDelivery(request: DbRequest, actor: Actor, accompanyingStaff?: string): Promise<DbRequest> {
-    if (actor.role !== 'technician' && actor.role !== 'courier') {
-      throw new Error('Only technicians or couriers can start delivery');
+    if (!canDeliver(actor)) {
+      throw new Error('Delivery capability is required to start delivery');
     }
 
     const { workflowEngine } = await import('./workflow-engine');
 
-    const isCourier = actor.role === 'courier';
+    const isCourier = actsAsCourier(actor);
     const extraUpdates: Record<string, unknown> = isCourier
       ? { assigned_courier_id: actor.id }
       : { assigned_technician_id: actor.id };
@@ -89,6 +100,7 @@ export const deliveryService = {
       actorId: actor.id,
       actorEmail: actor.email,
       actorRole: actor.role,
+      actorFeatures: actor.features,
       nextStatus: 'on_delivery',
       message: `Order is out for delivery`,
       action: 'start_delivery',
@@ -118,11 +130,11 @@ export const deliveryService = {
   }): Promise<{ request: DbRequest; deliveryLog: DeliveryLog }> {
     const { request, actor, note, proofUrl } = params;
 
-    if (actor.role !== 'technician' && actor.role !== 'courier') {
-      throw new Error('Only technicians or couriers can complete delivery');
+    if (!canDeliver(actor)) {
+      throw new Error('Delivery capability is required to complete delivery');
     }
 
-    const isCourier = actor.role === 'courier';
+    const isCourier = actsAsCourier(actor);
 
     // For courier: update existing delivery log to 'completed'
     // For technician: create new delivery log (legacy behavior)
@@ -164,6 +176,7 @@ export const deliveryService = {
       actorId: actor.id,
       actorEmail: actor.email,
       actorRole: actor.role,
+      actorFeatures: actor.features,
       nextStatus: 'delivered',
       message: `Order has been delivered`,
       action: 'complete_delivery',
@@ -189,8 +202,8 @@ export const deliveryService = {
     newStatus: DeliverySubStatus,
     actor: Actor,
   ): Promise<DeliveryLog> {
-    if (actor.role !== 'courier') {
-      throw new Error('Only couriers can update delivery sub-status');
+    if (!actsAsCourier(actor)) {
+      throw new Error('Courier capability is required to update delivery status');
     }
 
     const log = await deliveryLogsDb.getById(deliveryLogId);

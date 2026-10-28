@@ -65,7 +65,7 @@ export default function Hero() {
 
           <Link
             href="#contact"
-            className="rounded-lg bg-white/90 px-6 py-3 text-sm font-medium text-gray-900 transition-colors duration-150 hover:bg-white"
+            className="rounded-lg bg-white px-6 py-3 text-sm font-medium text-gray-900 transition-colors hover:bg-gray-100"
           >
             Contact Us
           </Link>

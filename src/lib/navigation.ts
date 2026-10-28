@@ -1,4 +1,5 @@
-import { FEATURE_DEFINITIONS, AppFeature, DEFAULT_FEATURES_BY_ROLE } from './features';
+import { FEATURE_DEFINITIONS, AppFeature } from './features';
+import { getEffectiveFeatures } from './permissions';
 import type { Profile } from '@/types/types';
 
 export interface NavItem {
@@ -24,16 +25,7 @@ export const NAV_ITEMS: NavItem[] = FEATURE_DEFINITIONS.map(f => ({
 export function getNavigationForProfile(profile: Profile | null): NavItem[] {
   if (!profile) return [];
 
-  let userFeatures = profile.features || [];
-
-  // Fallback to role-based default if they have 0 features assigned
-  if (userFeatures.length === 0) {
-    userFeatures = DEFAULT_FEATURES_BY_ROLE[profile.role] || [];
-  }
-
-  // Ensure persistent utility navigation
-  if (!userFeatures.includes('MY_PROFILE')) userFeatures.push('MY_PROFILE');
-  if (!userFeatures.includes('SETTINGS')) userFeatures.push('SETTINGS');
+  const userFeatures = getEffectiveFeatures(profile);
 
   // Build a lookup for O(1) access
   const navLookup = new Map(NAV_ITEMS.map(item => [item.id, item]));

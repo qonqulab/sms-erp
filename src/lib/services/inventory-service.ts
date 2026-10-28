@@ -2,8 +2,8 @@
 // INVENTORY SERVICE — Stock management and warehouse operations
 // ============================================================================
 
-import { productsDb, requestsDb, inventoryLogsDb, activityLogsDb, systemLogsDb } from '@/lib/db';
-import type { Actor, DbRequest, InventoryLog, Product, PaginationParams, InventoryMovementType } from '@/types/types';
+import { productsDb, requestsDb, inventoryLogsDb, activityLogsDb, supabase } from '@/lib/db';
+import type { Actor, DbRequest, InventoryLog, Product, InventoryMovementType } from '@/types/types';
 
 export const inventoryService = {
   async getWarehouseDashboard(branchId?: string) {
@@ -126,8 +126,6 @@ export const inventoryService = {
     };
   },
 
-  // ── PHASE 2 / 3 Scaffolding: These will eventually utilize pure Postgres RPCs ──
-
   async stockOpname(productId: string, actualStock: number, reason: string, actor: Actor): Promise<Product> {
     const product = await productsDb.getById(productId);
     if (!product) throw new Error('Product not found');
@@ -147,10 +145,18 @@ export const inventoryService = {
   },
 
   async executeStockTransfer(transferId: string, productId: string, qty: number, fromBranch: string, toBranch: string, actor: Actor): Promise<void> {
-    // Logic will be atomic in Phase 3. For now, scaffold the intent.
-    // await productsDb.decrementStock(productId, fromBranch...) -> 'TRANSFER_OUT'
-    // await productsDb.incrementStock(productId, toBranch...) -> 'TRANSFER_IN'
-    throw new Error('executeStockTransfer must be implemented via Postgres RPC to guarantee ACID compliance across branches.');
+    // The transfer and its items are locked and applied atomically by Postgres.
+    // Item/branch arguments remain for backwards-compatible callers; the source
+    // of truth is the approved transfer record itself.
+    void productId;
+    void qty;
+    void fromBranch;
+    void toBranch;
+    const { error } = await supabase.rpc('rpc_execute_stock_transfer', {
+      p_transfer_id: transferId,
+      p_user_id: actor.id,
+    });
+    if (error) throw new Error(error.message);
   }
 
 };

@@ -885,6 +885,7 @@ export interface Actor {
   id: string;
   email?: string;
   role: UserRole;
+  features?: AppFeature[];
 }
 
 export interface PaginationParams {

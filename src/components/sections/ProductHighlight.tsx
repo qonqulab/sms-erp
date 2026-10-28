@@ -79,7 +79,7 @@ export default function ProductHighlight() {
                     </div>
                   )}
                   {product.category && (
-                    <span className="absolute left-2 top-2 rounded-lg bg-white/90 px-2 py-0.5 text-[10px] font-semibold text-gray-700 backdrop-blur-sm">
+                    <span className="absolute left-2 top-2 rounded-md border border-gray-200 bg-white px-2 py-0.5 text-[10px] font-semibold text-gray-700">
                       {product.category}
                     </span>
                   )}

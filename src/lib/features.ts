@@ -5,6 +5,7 @@ export type AppFeature =
   | 'PRICE_LIST'
   | 'APPROVALS'
   | 'FINANCE'
+  | 'FAKTUR_TASKS'
   | 'WAREHOUSE'
   | 'INVENTORY'
   | 'CATALOG'
@@ -48,6 +49,7 @@ export const FEATURE_DEFINITIONS: FeatureDefinition[] = [
   { id: 'PRICE_LIST', label: 'Price List', icon: '💰', route: '/dashboard/marketing/prices' },
   { id: 'APPROVALS', label: 'Order Approvals', icon: '✅', route: '/dashboard/order-approvals' },
   { id: 'FINANCE', label: 'Finance', icon: '💵', route: '/dashboard/finance' },
+  { id: 'FAKTUR_TASKS', label: 'Faktur Tasks', icon: '🧾', route: '/dashboard/faktur-tasks' },
   { id: 'WAREHOUSE', label: 'Warehouse', icon: '🏭', route: '/dashboard/warehouse' },
   { id: 'INVENTORY', label: 'Inventory', icon: '📦', route: '/dashboard/warehouse/inventory' },
   { id: 'CATALOG', label: 'Catalog', icon: '📖', route: '/dashboard/warehouse/catalog' },
@@ -79,10 +81,11 @@ export const FEATURE_DEFINITIONS: FeatureDefinition[] = [
 ];
 
 export function getFeatureByRoute(route: string): FeatureDefinition | undefined {
-  return FEATURE_DEFINITIONS.find(f => {
-    if (f.route === route) return true;
-    return route.startsWith(f.route + '/');
-  });
+  // Prefer the most specific route: `/dashboard/delivery/inventory` belongs
+  // to MY_INVENTORY, not its broader DELIVERY parent feature.
+  return FEATURE_DEFINITIONS
+    .filter((feature) => route === feature.route || route.startsWith(`${feature.route}/`))
+    .sort((a, b) => b.route.length - a.route.length)[0];
 }
 
 export const DEFAULT_FEATURES_BY_ROLE: Record<string, AppFeature[]> = {
@@ -93,7 +96,7 @@ export const DEFAULT_FEATURES_BY_ROLE: Record<string, AppFeature[]> = {
   warehouse: ['COMPANY', 'WAREHOUSE', 'INVENTORY', 'CATALOG', 'CREATE_PR', 'CLAIMS', 'TIME_OFF', 'ATTENDANCE', 'MY_PROFILE', 'SETTINGS'],
   technician: ['COMPANY', 'DELIVERY', 'MY_INVENTORY', 'CLAIMS', 'TIME_OFF', 'ATTENDANCE', 'MY_PROFILE', 'SETTINGS'],
   courier: ['COMPANY', 'COURIER', 'CLAIMS', 'TIME_OFF', 'ATTENDANCE', 'MY_PROFILE', 'SETTINGS'],
-  faktur: ['COMPANY', 'FINANCE', 'CATALOG', 'CLAIMS', 'TIME_OFF', 'ATTENDANCE', 'MY_PROFILE', 'SETTINGS'],
+  faktur: ['COMPANY', 'FAKTUR_TASKS', 'CLAIMS', 'TIME_OFF', 'ATTENDANCE', 'MY_PROFILE', 'SETTINGS'],
   admin: ['COMPANY', 'ADMIN_PANEL', 'USERS', 'REPORTS', 'CLAIMS', 'TIME_OFF', 'ATTENDANCE', 'MY_PROFILE', 'SETTINGS'],
   owner: FEATURE_DEFINITIONS.filter(f => !f.clientOnly).map(f => f.id),
   director: ['COMPANY', 'DIRECTOR_OVERVIEW', 'APPROVALS', 'PR_APPROVALS', 'CLAIM_APPROVALS', 'ANALYTICS', 'REPORTS', 'CLAIMS', 'TIME_OFF', 'ATTENDANCE', 'MY_PROFILE', 'SETTINGS'],
