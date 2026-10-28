@@ -2,22 +2,14 @@
 // AUTH SERVICE — Authentication and profile management
 // ============================================================================
 
-import { supabase, requireAuthUser, getAuthUser } from '@/lib/db';
+import { supabase, getAuthUser } from '@/lib/db';
 import { profilesDb, activityLogsDb } from '@/lib/db';
 import type { Profile, UserRole } from '@/types/types';
 
-const ROLE_EMAILS: Record<string, UserRole> = {
-  'owner@sms.com': 'owner',
-  'admin@sms.com': 'admin',
-  'boss@sms.com': 'boss',
-  'director@sms.com': 'director',
-  'marketing@sms.com': 'marketing',
-  'finance@sms.com': 'finance',
-  'warehouse@sms.com': 'warehouse',
-  'technician@sms.com': 'technician',
-  'courier@sms.com': 'courier',
-  'tax@sms.com': 'tax',
-};
+// Roles are database-owned authorization data. Never derive them from a client
+// email allowlist: client-side email mappings can drift from RLS and enable
+// accidental privilege changes.
+const ROLE_EMAILS: Record<string, UserRole> = {};
 
 const ROLE_REDIRECTS: Record<UserRole, string> = {
   client: '/dashboard/client',
@@ -37,8 +29,8 @@ const ROLE_REDIRECTS: Record<UserRole, string> = {
   claim_officer: '/dashboard/claims',
 };
 
-function getRoleFromEmail(email: string): UserRole {
-  return ROLE_EMAILS[email.toLowerCase()] ?? 'client';
+function getRoleFromEmail(): UserRole {
+  return 'client';
 }
 
 export const authService = {
@@ -102,12 +94,6 @@ export const authService = {
         is_active: true,
         two_factor_enabled: false,
       });
-    } else {
-      // Sync role for staff emails
-      const expectedRole = getRoleFromEmail(user.email);
-      if (ROLE_EMAILS[user.email.toLowerCase()] && profile.role !== expectedRole) {
-        profile = await profilesDb.update(user.id, { role: expectedRole });
-      }
     }
 
     return profile;
