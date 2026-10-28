@@ -29,7 +29,8 @@ const ROLE_REDIRECTS: Record<UserRole, string> = {
   claim_officer: '/dashboard/claims',
 };
 
-function getRoleFromEmail(): UserRole {
+function getRoleFromEmail(email: string): UserRole {
+  void email;
   return 'client';
 }
 
