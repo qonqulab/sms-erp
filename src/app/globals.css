@@ -1,0 +1,48 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  /* Apple-style Design System Tokens */
+  --color-apple-blue: #007AFF;
+  --color-apple-blue-hover: #0A84FF;
+  --color-apple-blue-light: rgba(0, 122, 255, 0.1);
+  --color-apple-gray-bg: #F5F5F7;
+  --color-apple-gray-border: #E5E5EA;
+  --color-apple-text-primary: #1D1D1F;
+  --color-apple-text-secondary: #6E6E73;
+  --color-apple-success: #34C759;
+  --color-apple-warning: #FF9F0A;
+  --color-apple-danger: #FF3B30;
+
+  --radius-apple: 10px;
+}
+
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Inter", "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html,
+body {
+  overflow-x: hidden;
+}
