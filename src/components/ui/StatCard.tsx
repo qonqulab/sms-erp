@@ -5,6 +5,7 @@ interface StatCardProps {
   value: string | number;
   sub?: string;
   color?: 'blue' | 'green' | 'yellow' | 'red' | 'purple' | 'gray';
+  /** Retained for compatible callers; metric cards intentionally use no decoration. */
   icon?: React.ReactNode;
 }
 
@@ -17,11 +18,11 @@ const COLOR_MAP = {
   gray: 'from-gray-500 to-gray-600',
 };
 
-export function StatCard({ label, value, sub, color = 'blue', icon }: StatCardProps) {
+export function StatCard({ label, value, sub, color = 'blue' }: StatCardProps) {
   return (
     <div className="relative overflow-hidden rounded-2xl border border-gray-100 bg-white p-5 transition-shadow hover:shadow-md dark:border-gray-800 dark:bg-gray-900">
       <div className={`absolute -right-4 -top-4 h-20 w-20 rounded-full bg-gradient-to-br ${COLOR_MAP[color]} opacity-10`} />
-      <div className="flex items-start justify-between">
+      <div className="relative">
         <div>
           <p className="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
             {label}
@@ -33,11 +34,6 @@ export function StatCard({ label, value, sub, color = 'blue', icon }: StatCardPr
             <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{sub}</p>
           )}
         </div>
-        {icon && (
-          <div className={`flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${COLOR_MAP[color]} text-white`}>
-            {icon}
-          </div>
-        )}
       </div>
     </div>
   );

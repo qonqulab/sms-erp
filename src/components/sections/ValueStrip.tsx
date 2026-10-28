@@ -1,6 +1,5 @@
 'use client';
 
-import { motion } from 'framer-motion';
 
 const values = [
   {
@@ -28,13 +27,9 @@ export default function ValueStrip() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
 
-          {values.map((item, i) => (
-            <motion.div
+          {values.map((item) => (
+            <div
               key={item.title}
-              initial={{ opacity: 0, y: 15 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.05 }}
-              viewport={{ once: true }}
               className="text-center md:text-left"
             >
               <h3 className="text-sm font-semibold text-gray-900">
@@ -44,7 +39,7 @@ export default function ValueStrip() {
               <p className="mt-2 text-sm text-gray-600 leading-relaxed">
                 {item.desc}
               </p>
-            </motion.div>
+            </div>
           ))}
 
         </div>

@@ -11,13 +11,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.99.2",
     "framer-motion": "^12.38.0",
-<<<<<<< HEAD
     "next": "^16.4.3",
-=======
-    "next": "16.1.7",
-    "otplib": "^11.0.1",
-    "qrcode": "^1.5.4",
->>>>>>> a1e8d16cb65fea510ae885d49be63104752b0e8e
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "swr": "^2.4.1"
@@ -25,19 +19,11 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
-<<<<<<< HEAD
-=======
-    "@types/qrcode": "^1.5.6",
->>>>>>> a1e8d16cb65fea510ae885d49be63104752b0e8e
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "babel-plugin-react-compiler": "1.0.0",
     "eslint": "^9",
-<<<<<<< HEAD
     "eslint-config-next": "^16.4.3",
-=======
-    "eslint-config-next": "16.1.7",
->>>>>>> a1e8d16cb65fea510ae885d49be63104752b0e8e
     "tailwindcss": "^4",
     "typescript": "^5"
   }

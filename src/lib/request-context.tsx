@@ -4,11 +4,7 @@ import { createContext, useContext, useState, useCallback, useMemo } from 'react
 import { useAuth } from '@/hooks/useAuth';
 import { useBranch } from '@/hooks/useBranch';
 import { requireAuthUser } from '@/lib/db/client';
-<<<<<<< HEAD
 import { requestsDb, paymentPromisesDb, priceListDb } from '@/lib/db';
-=======
-import { requestsDb, paymentPromisesDb, productsDb, priceListDb } from '@/lib/db';
->>>>>>> a1e8d16cb65fea510ae885d49be63104752b0e8e
 import { notificationService } from '@/lib/services/notification-service';
 import { activityLogsDb } from '@/lib/db';
 import type { CartItem, DbRequest, ClientType } from '@/types/types';
@@ -181,11 +177,7 @@ export default function RequestProvider({ children }: { children: React.ReactNod
 
     clear();
     return request;
-<<<<<<< HEAD
   }, [items, itemCount, profile, activeBranchId, clear]);
-=======
-  }, [items, itemCount, profile, clear]);
->>>>>>> a1e8d16cb65fea510ae885d49be63104752b0e8e
 
   const value = useMemo(() => ({
     items, add, remove, updateQty, clear, itemCount, submit,

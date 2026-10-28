@@ -135,7 +135,7 @@ export default function TechnicianInventoryDashboard() {
         setIsEditModalOpen(false);
         setEditingProduct(undefined);
         setCatalogView('catalog');
-        router.push('/dashboard/technician/inventory');
+        router.push('/dashboard/delivery/inventory');
         await refresh();
       } catch (err) {
         alert(err instanceof Error ? err.message : 'Save failed');
@@ -179,7 +179,7 @@ export default function TechnicianInventoryDashboard() {
                 disabled={activeBranchId === 'ALL'}
                 onClick={() => {
                   setCatalogView('add-product');
-                  router.push('/dashboard/technician/inventory?view=add-product');
+                  router.push('/dashboard/delivery/inventory?view=add-product');
                 }}
                 title={activeBranchId === 'ALL' ? "Pilih cabang spesifik di atas untuk menambah item" : ""}
                 className="flex items-center gap-2 bg-apple-blue hover:bg-apple-blue-hover disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-xs font-bold px-5 py-3 rounded-xl transition-all active:scale-[0.98] shadow-lg shadow-apple-blue/20"
@@ -205,7 +205,7 @@ export default function TechnicianInventoryDashboard() {
             onSave={handleSaveProduct}
             onCancel={() => {
               setCatalogView('catalog');
-              router.push('/dashboard/technician/inventory');
+              router.push('/dashboard/delivery/inventory');
             }}
           />
         </div>

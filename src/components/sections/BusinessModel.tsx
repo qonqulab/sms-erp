@@ -21,7 +21,7 @@ const BusinessModel = () => {
             viewport={{ once: true }}
             className="space-y-8"
           >
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-3xl p-8 lg:p-12 border border-blue-100">
+            <div className="rounded-xl border border-gray-200 bg-white p-8 lg:p-12">
               <h3 className="text-3xl font-bold mb-4 text-gray-900">KSO System</h3>
               <p className="text-xl text-gray-600 mb-6 leading-relaxed">
                 Equipment loan + reagent system. Get analyzers without large upfront capital.
@@ -39,7 +39,7 @@ const BusinessModel = () => {
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
           >
-            <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-3xl p-8 lg:p-12 border border-green-100">
+            <div className="rounded-xl border border-gray-200 bg-white p-8 lg:p-12">
               <h3 className="text-3xl font-bold mb-4 text-gray-900">Cost Per Test</h3>
               <p className="text-xl text-gray-600 mb-6 leading-relaxed">
                 Predictable pricing based on actual usage. Scale as your volume grows.

@@ -28,10 +28,7 @@ CREATE TABLE IF NOT EXISTS company_requests (
     
     total_amount NUMERIC(15, 2) NOT NULL DEFAULT 0,
     paid_amount NUMERIC(15, 2) NOT NULL DEFAULT 0,
-<<<<<<< HEAD
     proposed_amount NUMERIC(15, 2),
-=======
->>>>>>> a1e8d16cb65fea510ae885d49be63104752b0e8e
     
     approved_by UUID REFERENCES auth.users(id),
     approval_date TIMESTAMPTZ,
@@ -73,11 +70,7 @@ CREATE TABLE IF NOT EXISTS company_request_history (
 CREATE TRIGGER set_company_requests_updated_at
 BEFORE UPDATE ON company_requests
 FOR EACH ROW
-<<<<<<< HEAD
 EXECUTE FUNCTION update_updated_at();
-=======
-EXECUTE FUNCTION update_modified_column();
->>>>>>> a1e8d16cb65fea510ae885d49be63104752b0e8e
 
 -- ==========================================
 -- ROW LEVEL SECURITY (RLS)
@@ -104,11 +97,7 @@ CREATE POLICY "Approvers and Claim Officers can view all requests"
     USING (
         EXISTS (
             SELECT 1 FROM profiles
-<<<<<<< HEAD
             WHERE id = auth.uid() AND role IN ('owner', 'director', 'claim_officer', 'admin')
-=======
-            WHERE id = auth.uid() AND role IN ('owner', 'director', 'claim_officer', 'superadmin', 'admin')
->>>>>>> a1e8d16cb65fea510ae885d49be63104752b0e8e
         )
     );
 
@@ -117,11 +106,7 @@ CREATE POLICY "Approvers and Claim Officers can update requests"
     USING (
         EXISTS (
             SELECT 1 FROM profiles
-<<<<<<< HEAD
             WHERE id = auth.uid() AND role IN ('owner', 'director', 'claim_officer', 'admin')
-=======
-            WHERE id = auth.uid() AND role IN ('owner', 'director', 'claim_officer', 'superadmin', 'admin')
->>>>>>> a1e8d16cb65fea510ae885d49be63104752b0e8e
         )
     );
 
@@ -137,11 +122,7 @@ CREATE POLICY "Users can view items of requests they can view"
                 created_by = auth.uid() OR
                 EXISTS (
                     SELECT 1 FROM profiles
-<<<<<<< HEAD
                     WHERE id = auth.uid() AND role IN ('owner', 'director', 'claim_officer', 'admin')
-=======
-                    WHERE id = auth.uid() AND role IN ('owner', 'director', 'claim_officer', 'superadmin', 'admin')
->>>>>>> a1e8d16cb65fea510ae885d49be63104752b0e8e
                 )
             )
         )
@@ -185,11 +166,7 @@ CREATE POLICY "Anyone can view history of their accessible requests"
                 created_by = auth.uid() OR
                 EXISTS (
                     SELECT 1 FROM profiles
-<<<<<<< HEAD
                     WHERE id = auth.uid() AND role IN ('owner', 'director', 'claim_officer', 'admin')
-=======
-                    WHERE id = auth.uid() AND role IN ('owner', 'director', 'claim_officer', 'superadmin', 'admin')
->>>>>>> a1e8d16cb65fea510ae885d49be63104752b0e8e
                 )
             )
         )

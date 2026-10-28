@@ -38,7 +38,7 @@ export default function About() {
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
           >
-            <div className="bg-white/50 backdrop-blur-sm rounded-3xl p-8 lg:p-12 shadow-2xl border border-gray-100">
+            <div className="rounded-xl border border-gray-200 bg-white p-8 shadow-sm lg:p-12">
               <ul className="space-y-4 text-lg">
                 <li className="flex items-start space-x-3">
                   <span className="w-2 h-2 bg-blue-600 rounded-full mt-2 flex-shrink-0" />

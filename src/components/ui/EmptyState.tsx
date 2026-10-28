@@ -1,6 +1,7 @@
 'use client';
 
 interface EmptyStateProps {
+  /** Kept temporarily for backwards-compatible callers; empty states are text-first. */
   icon?: string;
   title: string;
   description?: string;
@@ -10,10 +11,9 @@ interface EmptyStateProps {
   };
 }
 
-export function EmptyState({ icon = '📋', title, description, action }: EmptyStateProps) {
+export function EmptyState({ title, description, action }: EmptyStateProps) {
   return (
     <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-gray-50/50 px-6 py-16 text-center dark:border-gray-700 dark:bg-gray-900/50">
-      <span className="mb-3 text-4xl">{icon}</span>
       <h3 className="mb-1 text-lg font-semibold text-gray-900 dark:text-white">
         {title}
       </h3>

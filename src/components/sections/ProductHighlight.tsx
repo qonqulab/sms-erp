@@ -33,7 +33,7 @@ export default function ProductHighlight() {
   if (products.length === 0) return null;
 
   return (
-    <section className="w-full bg-white">
+    <section id="products" className="w-full bg-white">
       <div className="max-w-7xl mx-auto px-6 py-20">
         <div className="flex flex-col md:flex-row md:items-end md:justify-between mb-12 gap-6">
           <div className="max-w-xl">

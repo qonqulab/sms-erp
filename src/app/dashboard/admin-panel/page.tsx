@@ -166,19 +166,19 @@ export default function AdminDashboard() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Link
-            href="/dashboard/admin/automation"
+            href="/dashboard/admin-panel/automation"
             className="rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-red-700 active:scale-95"
           >
             Automation
           </Link>
           <Link
-            href="/dashboard/admin/system-health"
+            href="/dashboard/admin-panel/system-health"
             className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 active:scale-95"
           >
             System Health
           </Link>
           <Link
-            href="/dashboard/admin/backups"
+            href="/dashboard/admin-panel/backups"
             className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-emerald-700 active:scale-95"
           >
             Backups

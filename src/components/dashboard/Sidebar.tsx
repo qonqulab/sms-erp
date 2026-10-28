@@ -1,12 +1,10 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { getNavigationForProfile } from '@/lib/navigation';
-import { supabase } from '@/lib/db/client';
-import type { AppFeature } from '@/lib/features';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -15,25 +13,7 @@ interface SidebarProps {
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
-  const { profile, logout, role, setProfile } = useAuth();
-  const [dragIdx, setDragIdx] = useState<number | null>(null);
-  const [overIdx, setOverIdx] = useState<number | null>(null);
-
-  const handleDrop = useCallback(async (fromIdx: number, toIdx: number) => {
-    if (!profile || fromIdx === toIdx) return;
-    const features = [...(profile.features || [])] as AppFeature[];
-    const [moved] = features.splice(fromIdx, 1);
-    features.splice(toIdx, 0, moved);
-
-    // Optimistic: update local profile
-    setProfile?.({ ...profile, features });
-    try {
-      await supabase.from('profiles').update({ features }).eq('id', profile.id);
-    } catch {
-      // Revert on failure
-      setProfile?.(profile);
-    }
-  }, [profile, setProfile]);
+  const { profile, logout, role } = useAuth();
 
   if (!profile) return null;
 
@@ -52,19 +32,15 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   return (
     <aside
       className={`
-        fixed left-0 top-0 z-40 flex h-screen w-64 flex-col border-r
-        border-[var(--apple-gray-border)] bg-[var(--apple-gray-bg)] transition-transform
-        duration-300 ease-in-out lg:static lg:translate-x-0
+        fixed left-0 top-0 z-40 flex h-[100dvh] w-[17.5rem] max-w-[calc(100vw-2rem)] flex-col border-r
+        border-[var(--apple-gray-border)] bg-white transition-transform duration-200 [transition-timing-function:var(--ease-standard)] lg:static lg:max-w-none lg:translate-x-0
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
       `}
     >
       {/* Logo */}
       <div className="flex-shrink-0 border-b border-[var(--apple-gray-border)] p-6">
-        <Link href="/" className="flex items-center gap-3" onClick={onClose}>
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-sm font-bold text-white">
-            S
-          </div>
-          <span className="text-lg font-bold">SMS ERP</span>
+        <Link href="/" className="block" onClick={onClose}>
+          <span className="text-base font-semibold tracking-tight text-[var(--apple-text-primary)]">SMS ERP</span>
         </Link>
       </div>
 
@@ -83,67 +59,22 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         </div>
       </div>
 
-      {/* Navigation — draggable */}
+      {/* Navigation */}
       <nav className="custom-scrollbar flex-1 overflow-y-auto p-3">
         <div className="space-y-1">
-          {visibleNav.map((item, idx) => {
+          {visibleNav.map((item) => {
             const isActive = activeItem?.href === item.href;
-            const isDragging = dragIdx === idx;
-            const isDragOver = overIdx === idx && dragIdx !== idx;
             return (
-              <div
+              <Link
                 key={item.href}
-                draggable
-                onDragStart={(e) => {
-                  setDragIdx(idx);
-                  setOverIdx(idx);
-                  e.dataTransfer.effectAllowed = 'move';
-                }}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  e.dataTransfer.dropEffect = 'move';
-                  setOverIdx(idx);
-                }}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  if (dragIdx !== null) handleDrop(dragIdx, idx);
-                  setDragIdx(null);
-                  setOverIdx(null);
-                }}
-                onDragEnd={() => { setDragIdx(null); setOverIdx(null); }}
-                className={`flex items-center rounded-apple text-sm font-medium transition-all duration-200 select-none ${
-                  isDragging
-                    ? 'opacity-30'
-                    : isDragOver
-                    ? 'ring-2 ring-blue-400 ring-offset-1'
-                    : ''
+                href={item.href}
+                onClick={onClose}
+                className={`block rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-150 ${
+                  isActive ? 'bg-blue-50 text-[var(--apple-blue)]' : 'text-[var(--apple-text-secondary)] hover:bg-gray-50 hover:text-[var(--apple-text-primary)]'
                 }`}
               >
-                {/* Drag handle */}
-                <span
-                  className="flex-shrink-0 cursor-grab active:cursor-grabbing px-1.5 py-2.5 text-gray-300 hover:text-gray-500 transition-colors"
-                  title="Seret untuk pindahkan"
-                >
-                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
-                    <circle cx="9" cy="6" r="1.8" /><circle cx="15" cy="6" r="1.8" />
-                    <circle cx="9" cy="12" r="1.8" /><circle cx="15" cy="12" r="1.8" />
-                    <circle cx="9" cy="18" r="1.8" /><circle cx="15" cy="18" r="1.8" />
-                  </svg>
-                </span>
-
-                {/* Nav link */}
-                <Link
-                  href={item.href}
-                  onClick={onClose}
-                  className={`flex-1 py-2.5 pr-3 rounded-apple transition-colors ${
-                    isActive
-                      ? 'text-[var(--apple-blue)] font-bold'
-                      : 'text-apple-text-secondary hover:text-apple-blue'
-                  }`}
-                >
-                  {item.label}
-                </Link>
-              </div>
+                {item.label}
+              </Link>
             );
           })}
         </div>
@@ -153,7 +84,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       <div className="border-t border-[var(--apple-gray-border)] bg-white/30 p-3">
         <button
           onClick={logout}
-          className="flex w-full items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
+          className="flex w-full rounded-lg px-3 py-2.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
         >
           <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />

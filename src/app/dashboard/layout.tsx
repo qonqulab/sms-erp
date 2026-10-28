@@ -82,7 +82,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Mobile backdrop */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-[35] bg-black/20 backdrop-blur-sm transition-opacity lg:hidden"
+          className="fixed inset-0 z-[35] bg-black/30 transition-opacity lg:hidden"
           onClick={() => setSidebarOpen(false)}
           aria-hidden="true"
         />
@@ -92,16 +92,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       <div className="flex h-screen min-w-0 flex-1 flex-col overflow-hidden">
         {/* Top bar */}
-        <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-[var(--apple-gray-border)] bg-white/80 px-4 backdrop-blur-xl sm:px-6">
+        <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-[var(--apple-gray-border)] bg-white px-4 sm:px-6">
           <div className="flex items-center gap-3">
             <button
-              className="rounded-lg p-2 text-gray-500 transition-colors hover:bg-gray-100 lg:hidden"
+              className="rounded-lg px-2 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-100 lg:hidden"
               onClick={() => setSidebarOpen(true)}
               aria-label="Open menu"
             >
-              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
+              Menu
             </button>
             <h2 className="hidden text-sm font-semibold tracking-tight sm:block">
               {currentPageLabel}
@@ -116,12 +114,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <button
                 onClick={toggleChat}
                 disabled={isChatAnimating}
-                className={`relative rounded-lg p-2 transition-colors ${isChatAnimating ? 'text-gray-400 cursor-default' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800'}`}
+                className={`relative rounded-lg px-2 py-1.5 text-xs font-medium transition-colors ${isChatAnimating ? 'text-gray-400 cursor-default' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800'}`}
                 aria-label="Toggle chat"
               >
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
-                </svg>
+                Chat
               </button>
             )}
 

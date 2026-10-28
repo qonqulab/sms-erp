@@ -98,7 +98,6 @@ export const financeService = {
       updated_by: actor.id,
     });
 
-<<<<<<< HEAD
     const { data: existingTx, error: existingTxError } = await supabase
       .from('financial_transactions')
       .select('id')
@@ -125,19 +124,6 @@ export const financeService = {
       });
 
       if (transactionError) throw new Error(transactionError.message);
-=======
-    const existingTx = await supabase.from('financial_transactions').select('id').eq('reference_id', invoiceId).single();
-    if (!existingTx.data) {
-      await supabase.from('financial_transactions').insert({
-        branch_id: invoice.branch_id,
-        type: 'INFLOW',
-        category: 'invoice_payment',
-        amount: invoice.total,
-        reference_id: invoice.id,
-        description: `Payment for Invoice via ${paymentMethod} (Ref: ${paymentRef})`,
-        created_by: actor.id,
-      });
->>>>>>> a1e8d16cb65fea510ae885d49be63104752b0e8e
     }
 
     await activityLogsDb.create({

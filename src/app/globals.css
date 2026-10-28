@@ -1,48 +1,188 @@
 @import "tailwindcss";
 
 :root {
+  --font-ui: "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-ui-display: "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif;
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #172033;
+  --apple-blue: #2563eb;
+  --apple-blue-hover: #1d4ed8;
+  --apple-blue-light: rgb(37 99 235 / 0.08);
+  --apple-gray-bg: #f7f8fa;
+  --apple-gray-border: #e5e7eb;
+  --apple-text-primary: #172033;
+  --apple-text-secondary: #667085;
+  --apple-text-tertiary: #98a2b3;
+  --apple-border: #e5e7eb;
+  --apple-success: #15803d;
+  --apple-warning: #b45309;
+  --apple-danger: #b42318;
+  --motion-fast: 140ms;
+  --motion-base: 220ms;
+  --motion-slow: 320ms;
+  --ease-standard: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-ui);
+  --font-mono: "SF Mono", SFMono-Regular, Consolas, "Liberation Mono", monospace;
 
-  /* Apple-style Design System Tokens */
-  --color-apple-blue: #007AFF;
-  --color-apple-blue-hover: #0A84FF;
-  --color-apple-blue-light: rgba(0, 122, 255, 0.1);
-  --color-apple-gray-bg: #F5F5F7;
-  --color-apple-gray-border: #E5E5EA;
-  --color-apple-text-primary: #1D1D1F;
-  --color-apple-text-secondary: #6E6E73;
-  --color-apple-success: #34C759;
-  --color-apple-warning: #FF9F0A;
-  --color-apple-danger: #FF3B30;
+  --color-apple-blue: var(--apple-blue);
+  --color-apple-blue-hover: var(--apple-blue-hover);
+  --color-apple-blue-light: var(--apple-blue-light);
+  --color-apple-gray-bg: var(--apple-gray-bg);
+  --color-apple-gray-border: var(--apple-gray-border);
+  --color-apple-text-primary: var(--apple-text-primary);
+  --color-apple-text-secondary: var(--apple-text-secondary);
+  --color-apple-success: var(--apple-success);
+  --color-apple-warning: var(--apple-warning);
+  --color-apple-danger: var(--apple-danger);
 
   --radius-apple: 10px;
 }
 
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Inter", "Helvetica Neue", Arial, sans-serif;
+  font-family: var(--font-ui);
+  font-size: 0.9375rem;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+:where(h1, h2, h3, h4, h5, h6) {
+  font-family: var(--font-ui-display);
+  color: var(--apple-text-primary);
+  text-wrap: balance;
+}
+
+:where(button, input, select, textarea) {
+  font: inherit;
+  letter-spacing: inherit;
+}
+
+:where(th, label) {
+  font-family: var(--font-ui);
+}
+
+:where(p, li, dd) {
+  text-wrap: pretty;
+}
+
+/* Keep legacy utility-heavy screens on the same calm type scale. */
+.font-black {
+  font-weight: 700;
+}
+
+.tracking-tighter,
+.tracking-tight {
+  letter-spacing: -0.02em;
+}
+
+.tracking-wide,
+.tracking-wider,
+.tracking-widest {
+  letter-spacing: 0.06em;
+}
+
+[class*="text-[9px]"] {
+  font-size: 0.6875rem;
+}
+
+[class*="text-[10px]"],
+[class*="text-[11px]"] {
+  font-size: 0.75rem;
+}
+
+@media (max-width: 640px) {
+  body {
+    font-size: 0.9375rem;
+  }
+
+  :where(h1) {
+    line-height: 1.12;
+  }
 }
 
 html,
 body {
   overflow-x: hidden;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+* {
+  font-variant-emoji: text;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+[role='button'] {
+  touch-action: manipulation;
+}
+
+/* The application uses flat, opaque surfaces—not glass panels or playful motion. */
+[class*="backdrop-blur"] {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+[class*="animate-bounce"],
+[class*="animate-ping"],
+[class*="animate-pulse"] {
+  animation: none !important;
+}
+
+button:active,
+a:active,
+[role='button']:active,
+[class*="hover:scale"],
+[class*="group-hover:scale"] {
+  transform: none !important;
+}
+
+/* Framer Motion writes transforms inline. Keep the remaining legacy wrappers
+   limited to opacity changes until they are removed page by page. */
+[style*="transform"] {
+  transform: none !important;
+}
+
+/* Decorative pictograms are intentionally excluded from the visual language. */
+svg {
+  display: none !important;
+}
+
+button[aria-label]:has(> svg:only-child)::after {
+  content: attr(aria-label);
+  font-size: 0.75rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 1ms !important;
+  }
 }

@@ -121,7 +121,7 @@ export default function SystemHealthPage() {
           <p className="text-gray-500 text-sm mt-1">Operational health checks for database, automation, finance, inventory, and monthly closing.</p>
         </div>
         <Link
-          href="/dashboard/admin"
+          href="/dashboard/admin-panel"
           className="px-4 py-2 rounded-lg bg-gray-100 hover:bg-slate-700 text-gray-700 text-sm transition-colors"
         >
           Back to Admin

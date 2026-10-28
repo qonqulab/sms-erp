@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
@@ -20,13 +19,9 @@ const Navbar = () => {
   };
 
   return (
-    <motion.nav
-      initial={{ y: -80 }}
-      animate={{ y: 0 }}
-      className="fixed top-0 left-0 right-0 z-[100] bg-white border-b border-gray-100"
-    >
-      <div className="max-w-7xl mx-auto px-6">
-        <div className="flex items-center h-16 lg:h-20">  
+    <nav className="fixed inset-x-0 top-0 z-[100] border-b border-gray-200 bg-white">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6">
+        <div className="flex h-16 items-center lg:h-[4.5rem]">
 
           {/* LEFT: LOGO */}
           <div className="flex-1 flex items-center">
@@ -36,17 +31,17 @@ const Navbar = () => {
           </div>
 
           {/* CENTER: MENU TENGAH */}
-          <div className="flex-1 hidden md:flex items-center justify-center gap-10">
-            <Link href="/about" className="text-sm font-bold text-[var(--apple-text-secondary)] hover:text-[var(--apple-text-primary)] transition-colors">
+          <div className="hidden flex-1 items-center justify-center gap-8 md:flex">
+            <Link href="/#about" className="text-sm font-medium text-[var(--apple-text-secondary)] transition-colors hover:text-[var(--apple-text-primary)]">
               About
             </Link>
-            <Link href="/dashboard/client/products" className="text-sm font-bold text-[var(--apple-text-secondary)] hover:text-[var(--apple-text-primary)] transition-colors">
+            <Link href="/#products" className="text-sm font-medium text-[var(--apple-text-secondary)] transition-colors hover:text-[var(--apple-text-primary)]">
               Products
             </Link>
-            <Link href="/services" className="text-sm font-bold text-[var(--apple-text-secondary)] hover:text-[var(--apple-text-primary)] transition-colors">
+            <Link href="/#solutions" className="text-sm font-medium text-[var(--apple-text-secondary)] transition-colors hover:text-[var(--apple-text-primary)]">
               Services
             </Link>
-            <Link href="/contact" className="text-sm font-bold text-[var(--apple-text-secondary)] hover:text-[var(--apple-text-primary)] transition-colors">
+            <Link href="/#contact" className="text-sm font-medium text-[var(--apple-text-secondary)] transition-colors hover:text-[var(--apple-text-primary)]">
               Contact
             </Link>
           </div>
@@ -71,20 +66,14 @@ const Navbar = () => {
                 <div className="relative">
                   <button 
                     onClick={() => setProfileOpen(!profileOpen)}
-                    className="flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-br from-[var(--apple-blue)] to-blue-600 text-white font-black text-sm uppercase shadow-sm hover:scale-105 transition-transform ring-2 ring-transparent hover:ring-[var(--apple-blue)]/30 ring-offset-2"
+                    className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--apple-blue)] text-sm font-semibold uppercase text-white transition-colors hover:bg-[var(--apple-blue-hover)]"
                   >
                     {profile.name?.[0] || profile.email?.[0] || '?'}
                   </button>
 
                   {/* Profile Dropdown */}
-                  <AnimatePresence>
                   {profileOpen && (
-                    <motion.div 
-                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                      transition={{ duration: 0.15, ease: "easeOut" }}
-                      className="absolute right-0 mt-3 w-56 bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-[var(--apple-border)] py-2 z-50 overflow-hidden"
+                    <div className="absolute right-0 z-50 mt-3 w-56 overflow-hidden rounded-xl border border-[var(--apple-border)] bg-white py-2 shadow-lg"
                     >
                       <div className="px-4 py-3 border-b border-[var(--apple-border)] bg-[var(--apple-gray-bg)]/50">
                         <p className="text-sm font-bold text-[var(--apple-text-primary)] truncate">{profile.name || profile.email}</p>
@@ -108,15 +97,14 @@ const Navbar = () => {
                           Sign Out
                         </button>
                       </div>
-                    </motion.div>
+                    </div>
                   )}
-                  </AnimatePresence>
                 </div>
               </>
             ) : (
               <Link
                 href="/login"
-                className="rounded-full bg-blue-600 px-5 py-2 text-sm font-bold text-white transition-all hover:bg-blue-700 active:scale-95 shadow-sm"
+                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
               >
                 Get Started
               </Link>
@@ -125,10 +113,9 @@ const Navbar = () => {
             {/* Mobile menu btn */}
             <button
               onClick={() => setMobileOpen((prev) => !prev)}
-              className="md:hidden relative w-10 h-10 flex items-center justify-center bg-[var(--apple-gray-bg)] rounded-full ml-1"
+              className="ml-1 rounded-lg bg-[var(--apple-gray-bg)] px-3 py-2 text-xs font-medium text-[var(--apple-text-primary)] md:hidden"
             >
-              <span className={`absolute h-[2px] w-4 bg-[var(--apple-text-primary)] transition-all ${mobileOpen ? 'rotate-45' : '-translate-y-1.5'}`} />
-              <span className={`absolute h-[2px] w-4 bg-[var(--apple-text-primary)] transition-all ${mobileOpen ? '-rotate-45' : 'translate-y-1.5'}`} />
+              {mobileOpen ? 'Close' : 'Menu'}
             </button>
           </div>
 
@@ -136,19 +123,14 @@ const Navbar = () => {
       </div>
 
       {/* MOBILE MENU */}
-      <AnimatePresence>
-        {mobileOpen && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="md:hidden bg-white border-t border-[var(--apple-border)] overflow-hidden"
+      {mobileOpen && (
+          <div className="overflow-hidden border-t border-[var(--apple-border)] bg-white md:hidden"
           >
             <div className="px-6 py-6 space-y-4">
-              <Link href="/about" onClick={() => setMobileOpen(false)} className="block text-[var(--apple-text-primary)] font-bold text-lg">About</Link>
-              <Link href="/dashboard/client/products" onClick={() => setMobileOpen(false)} className="block text-[var(--apple-text-primary)] font-bold text-lg">Products</Link>
-              <Link href="/services" onClick={() => setMobileOpen(false)} className="block text-[var(--apple-text-primary)] font-bold text-lg">Services</Link>
-              <Link href="/contact" onClick={() => setMobileOpen(false)} className="block text-[var(--apple-text-primary)] font-bold text-lg">Contact</Link>
+              <Link href="/#about" onClick={() => setMobileOpen(false)} className="block text-lg font-medium text-[var(--apple-text-primary)]">About</Link>
+              <Link href="/#products" onClick={() => setMobileOpen(false)} className="block text-lg font-medium text-[var(--apple-text-primary)]">Products</Link>
+              <Link href="/#solutions" onClick={() => setMobileOpen(false)} className="block text-lg font-medium text-[var(--apple-text-primary)]">Services</Link>
+              <Link href="/#contact" onClick={() => setMobileOpen(false)} className="block text-lg font-medium text-[var(--apple-text-primary)]">Contact</Link>
               
               {profile && (
                 <div className="pt-6 border-t border-[var(--apple-border)] mt-4">
@@ -158,10 +140,9 @@ const Navbar = () => {
                 </div>
               )}
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.nav>
+          </div>
+      )}
+    </nav>
   );
 };
 

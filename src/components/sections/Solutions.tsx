@@ -19,7 +19,7 @@ export default function Solutions() {
   const subtitle = 'From equipment to consumables to full-service support — everything your lab needs to operate reliably.';
 
   return (
-    <section id="solutions" className="py-32 px-4 sm:px-6 lg:px-8 bg-gray-50/50">
+    <section id="solutions" className="bg-white px-4 py-24 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 50 }}
@@ -55,22 +55,22 @@ export default function Solutions() {
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
                 whileHover={{ scale: 1.02, y: -8 }}
-                className="group bg-white rounded-3xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-500 border border-gray-100 hover:border-gray-200"
+                className="group overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-colors hover:border-gray-300"
               >
                 <div className="h-48 lg:h-56 overflow-hidden bg-gray-100 relative">
                   <Image
                     src={solution.image_url || ''}
                     alt={solution.title}
                     fill
-                    className="object-cover group-hover:scale-110 transition-transform duration-700"
+                    className="object-cover"
                     sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                   />
                 </div>
                 <div className="p-8">
-                  <span className="inline-block bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium mb-4">
+                  <span className="mb-4 inline-block text-sm font-medium text-gray-500">
                     {solution.category}
                   </span>
-                  <h3 className="text-2xl font-bold mb-3 group-hover:text-blue-600 transition-colors duration-300">
+                  <h3 className="mb-3 text-2xl font-bold text-gray-900">
                     {solution.title}
                   </h3>
                   <p className="text-gray-600 mb-6 leading-relaxed">
@@ -78,7 +78,7 @@ export default function Solutions() {
                   </p>
                   <Link
                     href={`/solution/${solution.slug}`}
-                    className="text-blue-600 hover:text-blue-700 font-medium text-lg flex items-center group-hover:translate-x-2 transition-all duration-300"
+                    className="flex text-lg font-medium text-blue-600 transition-colors hover:text-blue-700"
                   >
                     Learn More →
                   </Link>
