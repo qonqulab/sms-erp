@@ -2,6 +2,7 @@
 // AUTH SERVICE — Authentication and profile management
 // ============================================================================
 
+<<<<<<< HEAD
 import { supabase, getAuthUser } from '@/lib/db';
 import { profilesDb, activityLogsDb } from '@/lib/db';
 import type { Profile, UserRole } from '@/types/types';
@@ -10,6 +11,24 @@ import type { Profile, UserRole } from '@/types/types';
 // email allowlist: client-side email mappings can drift from RLS and enable
 // accidental privilege changes.
 const ROLE_EMAILS: Record<string, UserRole> = {};
+=======
+import { supabase, requireAuthUser, getAuthUser } from '@/lib/db';
+import { profilesDb, activityLogsDb } from '@/lib/db';
+import type { Profile, UserRole } from '@/types/types';
+
+const ROLE_EMAILS: Record<string, UserRole> = {
+  'owner@sms.com': 'owner',
+  'admin@sms.com': 'admin',
+  'boss@sms.com': 'boss',
+  'director@sms.com': 'director',
+  'marketing@sms.com': 'marketing',
+  'finance@sms.com': 'finance',
+  'warehouse@sms.com': 'warehouse',
+  'technician@sms.com': 'technician',
+  'courier@sms.com': 'courier',
+  'tax@sms.com': 'tax',
+};
+>>>>>>> a1e8d16cb65fea510ae885d49be63104752b0e8e
 
 const ROLE_REDIRECTS: Record<UserRole, string> = {
   client: '/dashboard/client',
@@ -30,8 +49,12 @@ const ROLE_REDIRECTS: Record<UserRole, string> = {
 };
 
 function getRoleFromEmail(email: string): UserRole {
+<<<<<<< HEAD
   void email;
   return 'client';
+=======
+  return ROLE_EMAILS[email.toLowerCase()] ?? 'client';
+>>>>>>> a1e8d16cb65fea510ae885d49be63104752b0e8e
 }
 
 export const authService = {
@@ -95,6 +118,15 @@ export const authService = {
         is_active: true,
         two_factor_enabled: false,
       });
+<<<<<<< HEAD
+=======
+    } else {
+      // Sync role for staff emails
+      const expectedRole = getRoleFromEmail(user.email);
+      if (ROLE_EMAILS[user.email.toLowerCase()] && profile.role !== expectedRole) {
+        profile = await profilesDb.update(user.id, { role: expectedRole });
+      }
+>>>>>>> a1e8d16cb65fea510ae885d49be63104752b0e8e
     }
 
     return profile;

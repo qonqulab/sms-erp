@@ -15,9 +15,13 @@ export default function Hero() {
 
   const title = settings?.hero_title || 'Precision Laboratory Systems\nBuilt for Real Operations';
   const subtitle = settings?.hero_subtitle || 'Equipment, reagents, and technical support for laboratories across Indonesia.';
+<<<<<<< HEAD
   // Files in Next.js' public directory are served from the site root.
   // Keep the local asset as a reliable fallback when CMS has no video URL.
   const videoUrl = settings?.hero_video_url?.trim() || '/videos/hero.mp4';
+=======
+  const videoUrl = settings?.hero_video_url || '';
+>>>>>>> a1e8d16cb65fea510ae885d49be63104752b0e8e
   const ctaText = 'Explore Products';
   const ctaLink = '/dashboard/client/products';
 
