@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
@@ -17,7 +16,7 @@ import { getNavigationForProfile } from '@/lib/navigation';
 import { PageSpinner } from '@/components/ui/LoadingSkeleton';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { profile, loading, role } = useAuth();
+  const { profile, loading } = useAuth();
   useHeartbeat(profile?.id);
   const router = useRouter();
   const pathname = usePathname();
@@ -58,7 +57,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   // Close sidebar on route change
   useEffect(() => {
-    setSidebarOpen(false);
+    const closeSidebar = window.setTimeout(() => setSidebarOpen(false), 0);
+    return () => window.clearTimeout(closeSidebar);
   }, [pathname]);
 
   const canChat = profile?.role ? chatService.canUseChat(profile.role) : false;

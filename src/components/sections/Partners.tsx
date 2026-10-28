@@ -1,6 +1,5 @@
 'use client';
 
-import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { cmsService } from '@/lib/services';
 import type { CmsPartner } from '@/types/types';
@@ -18,15 +17,10 @@ export default function Partners() {
   return (
     <section className="py-24 px-4 sm:px-6 lg:px-8 bg-gray-50">
       <div className="max-w-7xl mx-auto">
-        <motion.div
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          className="text-center mb-16"
-        >
+        <div className="mb-16 text-center">
           <h3 className="text-2xl font-bold text-gray-900 mb-2">Trusted Partners</h3>
           <p className="text-gray-600">Working with leading laboratory equipment manufacturers</p>
-        </motion.div>
+        </div>
 
         {loading ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-8 items-center justify-items-center">
@@ -36,15 +30,10 @@ export default function Partners() {
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-8 lg:gap-12 items-center justify-items-center">
-            {displayPartners.map((partner, index) => (
-              <motion.div
+            {displayPartners.map((partner) => (
+              <div
                 key={partner.name}
-                initial={{ opacity: 0.5, scale: 0.95 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                whileHover={{ scale: 1.1, opacity: 1 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.3, delay: index * 0.1 }}
-                className="relative h-20 w-32 bg-white rounded-2xl shadow-md p-4 flex items-center justify-center border border-gray-100 hover:shadow-xl hover:border-gray-200 transition-all duration-300 overflow-hidden"
+                className="relative flex h-20 w-32 items-center justify-center overflow-hidden rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-colors hover:border-gray-300"
               >
                 {partner.logo?.startsWith('/') || partner.logo?.startsWith('http') ? (
                   <img src={partner.logo} alt={partner.name} className="max-h-full max-w-full object-contain" />
@@ -53,7 +42,7 @@ export default function Partners() {
                     {partner.name}
                   </div>
                 )}
-              </motion.div>
+              </div>
             ))}
           </div>
         )}

@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
 import { productsDb } from '@/lib/db';
 import { formatCurrency } from '@/lib/format-utils';
 import type { Product } from '@/types/types';
@@ -53,18 +52,14 @@ export default function ProductHighlight() {
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-          {products.map((product, i) => {
+          {products.map((product) => {
             const clientType = profile?.client_type?.toLowerCase() || '';
             const isNoPriceUser = clientType === 'kso' || clientType === 'cost per test';
             const price = product.price ? product.price.price_regular : null;
 
             return (
-              <motion.div
+              <div
                 key={product.id}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
-                viewport={{ once: true }}
                 className="group relative flex flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white transition-all hover:border-gray-200 hover:shadow-md"
               >
                 {/* Image */}
@@ -126,7 +121,7 @@ export default function ProductHighlight() {
                     </div>
                   </div>
                 </div>
-              </motion.div>
+              </div>
             );
           })}
         </div>

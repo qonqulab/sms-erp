@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { cmsService } from '@/lib/services';
 import type { CmsSolution } from '@/types/types';
@@ -21,19 +20,14 @@ export default function Solutions() {
   return (
     <section id="solutions" className="bg-white px-4 py-24 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
-        <motion.div
-          initial={{ opacity: 0, y: 50 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="text-center mb-24"
-        >
+        <div className="mb-24 text-center">
           <h2 className="text-4xl md:text-5xl font-bold mb-6 text-gray-900">
             {title}
           </h2>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
             {subtitle}
           </p>
-        </motion.div>
+        </div>
 
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -47,14 +41,9 @@ export default function Solutions() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {solutions.map((solution, index) => (
-              <motion.div
+            {solutions.map((solution) => (
+              <div
                 key={solution.slug || solution.id}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-                whileHover={{ scale: 1.02, y: -8 }}
                 className="group overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-colors hover:border-gray-300"
               >
                 <div className="h-48 lg:h-56 overflow-hidden bg-gray-100 relative">
@@ -83,7 +72,7 @@ export default function Solutions() {
                     Learn More →
                   </Link>
                 </div>
-              </motion.div>
+              </div>
             ))}
           </div>
         )}

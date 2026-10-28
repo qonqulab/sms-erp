@@ -44,7 +44,8 @@ export default function AutomationDashboardPage() {
 
   useEffect(() => {
     if (!profile) return;
-    refresh();
+    const refreshTimer = window.setTimeout(() => void refresh(), 0);
+    return () => window.clearTimeout(refreshTimer);
   }, [profile, refresh]);
 
   useRealtimeTable('automation_events', undefined, refresh, {

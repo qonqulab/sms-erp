@@ -46,7 +46,8 @@ export default function AutomationSettingsPage() {
 
   useEffect(() => {
     if (!profile) return;
-    refresh();
+    const refreshTimer = window.setTimeout(() => void refresh(), 0);
+    return () => window.clearTimeout(refreshTimer);
   }, [profile, refresh]);
 
   useRealtimeTable('automation_webhooks', undefined, refresh, {

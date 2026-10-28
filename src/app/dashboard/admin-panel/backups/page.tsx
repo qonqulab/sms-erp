@@ -40,7 +40,8 @@ export default function AdminBackupsPage() {
 
   useEffect(() => {
     if (!profile) return;
-    void refresh();
+    const refreshTimer = window.setTimeout(() => void refresh(), 0);
+    return () => window.clearTimeout(refreshTimer);
   }, [profile, refresh]);
 
   useRealtimeTable('backup_logs', undefined, refresh, {

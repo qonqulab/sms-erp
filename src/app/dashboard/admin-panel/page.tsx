@@ -7,13 +7,10 @@ import { useAuth } from '@/hooks/useAuth';
 import { useRealtimeTable } from '@/hooks/useRealtimeTable';
 import { canAccessRoute } from '@/lib/permissions';
 import { analyticsService, workflowEngine, authService } from '@/lib/services';
-import { profilesDb, issuesDb, activityLogsDb, requestsDb } from '@/lib/db';
-import { formatCurrency, formatRelative } from '@/lib/format-utils';
-import { DashboardSkeleton, EmptyState, ErrorState, StatCard, StatusBadge } from '@/components/ui';
-import type { Profile, Issue, ActivityLog, DbRequest, UserRole, IssueStatus } from '@/types/types';
-
-const ALL_ROLES: UserRole[] = ['client', 'marketing', 'boss', 'finance', 'warehouse', 'technician', 'admin', 'owner', 'tax'];
-const PAGE_SIZE = 25;
+import { issuesDb, activityLogsDb, requestsDb } from '@/lib/db';
+import { formatRelative } from '@/lib/format-utils';
+import { DashboardSkeleton, EmptyState, ErrorState, StatCard } from '@/components/ui';
+import type { Issue, ActivityLog, DbRequest, IssueStatus } from '@/types/types';
 
 type TabKey = 'issues' | 'activity';
 
@@ -71,7 +68,8 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (!profile) return;
-    void refresh();
+    const refreshTimer = window.setTimeout(() => void refresh(), 0);
+    return () => window.clearTimeout(refreshTimer);
   }, [profile, activeBranchId, refresh]);
 
   // ---------- Realtime subscriptions ----------
