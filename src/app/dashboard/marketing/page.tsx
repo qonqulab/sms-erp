@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import { useAuth } from '@/hooks/useAuth';
@@ -9,7 +8,8 @@ import { useBranch } from '@/hooks/useBranch';
 import { useRealtimeTable } from '@/hooks/useRealtimeTable';
 import { canAccessRoute } from '@/lib/permissions';
 import { requestsDb, priceListDb, profilesDb } from '@/lib/db';
-import { workflowEngine, authService } from '@/lib/services';
+import { autoApproveService, authService } from '@/lib/services';
+import { supabase } from '@/lib/supabase';
 import { formatCurrency, formatDateTime, formatOrderId } from '@/lib/format-utils';
 import { StatCard } from '@/components/ui/StatCard';
 import { StatusBadge } from '@/components/ui/StatusBadge';
@@ -20,7 +20,7 @@ import { OrderNotes } from '@/components/ui';
 import type { ClientType, DbRequest, DiscountType, PriceList, Profile } from '@/types/types';
 
 export default function MarketingDashboard() {
-  const { profile, role, loading } = useAuth();
+  const { profile, loading } = useAuth();
   const router = useRouter();
   const { activeBranchId } = useBranch();
 
@@ -81,32 +81,34 @@ export default function MarketingDashboard() {
   // Synchronize local edit states
   useEffect(() => {
     if (!requests.length) return;
-
-    setNotes(prev => {
-      const next = { ...prev };
-      let changed = false;
-      requests.forEach(r => {
-        if (next[r.id] === undefined) {
-          next[r.id] = r.note || '';
-          changed = true;
-        }
+    const timer = window.setTimeout(() => {
+      setNotes(prev => {
+        const next = { ...prev };
+        let changed = false;
+        requests.forEach(r => {
+          if (next[r.id] === undefined) {
+            next[r.id] = r.note || '';
+            changed = true;
+          }
+        });
+        return changed ? next : prev;
       });
-      return changed ? next : prev;
-    });
 
-    setPricingModes(prev => {
-      const next = { ...prev };
-      let changed = false;
-      requests.forEach(r => {
-        if (next[r.id] === undefined) {
-          next[r.id] = (r.user_email && clientProfiles[r.user_email]) 
-            ? (clientProfiles[r.user_email].client_type || 'regular') 
-            : 'regular';
-          changed = true;
-        }
+      setPricingModes(prev => {
+        const next = { ...prev };
+        let changed = false;
+        requests.forEach(r => {
+          if (next[r.id] === undefined) {
+            next[r.id] = (r.user_email && clientProfiles[r.user_email])
+              ? (clientProfiles[r.user_email].client_type || 'regular')
+              : 'regular';
+            changed = true;
+          }
+        });
+        return changed ? next : prev;
       });
-      return changed ? next : prev;
-    });
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [requests, clientProfiles]);
 
   const fetching = !requests.length && !allPrices.length && !errorReq && !errorPrice;
@@ -181,50 +183,23 @@ export default function MarketingDashboard() {
         const disc = discounts[request.id];
         const itemDiscMap = itemDiscounts[request.id] || {};
 
-        // Save per-item discounts and prices to request_items (batch)
-        if (request.request_items?.length) {
-          const { supabase } = await import('@/lib/db/client');
-          await Promise.all(request.request_items.map(item => {
-            const price = priceMap.get(item.product_id);
-            const unitPrice = price
-              ? (selectedType === 'kso' ? price.price_kso
-                : selectedType === 'cost_per_test' ? price.price_cost_per_test
-                : price.price_regular)
-              : 0;
-            const pct = itemDiscMap[item.id] || 0;
-            return supabase.from('request_items').update({
-              price_at_order: unitPrice,
-              discount_percentage: pct
-            }).eq('id', item.id);
-          }));
-        }
+        const { error: pricingError } = await supabase.rpc('rpc_price_request', {
+          p_request_id: request.id,
+          p_user_id: profile.id,
+          p_pricing_mode: selectedType,
+          p_note: note ?? '',
+          p_discount_type: discountAmount > 0 ? disc?.type ?? null : null,
+          p_discount_value: discountAmount > 0 ? disc?.value ?? 0 : 0,
+          p_discount_reason: discountAmount > 0 ? disc?.reason ?? '' : '',
+          p_item_discounts: itemDiscMap,
+        });
+        if (pricingError) throw new Error(pricingError.message);
 
-        await workflowEngine.transition({
-          request,
-          actorId: profile.id,
-          actorEmail: profile.email,
-          actorRole: role,
-          nextStatus: 'priced',
-          action: 'price_request',
-          message: `Request ${formatOrderId(request.id)} priced${discountAmount > 0 ? ` (discount ${formatCurrency(discountAmount)})` : ''} and ready for boss approval`,
-          type: 'info',
-          notifyRequester: false,
-          notifyRoles: ['boss', 'admin', 'owner'],
-          extraUpdates: {
-            total_price: totalPrice,
-            note,
-            ...(discountAmount > 0 && disc ? {
-              discount_type: disc.type,
-              discount_value: disc.value,
-              discount_amount: discountAmount,
-              discount_reason: disc.reason || undefined,
-              discounted_by: profile.id,
-            } : {}),
-          },
-          metadata: {
-            pricing_mode: selectedType,
-            ...(discountAmount > 0 ? { discount_amount: discountAmount } : {}),
-          },
+        // Approval rules remain server-authoritative. This call only asks the
+        // database to evaluate the configured automatic-approval policy.
+        await autoApproveService.processSingleRequest(request, {
+          id: profile.id,
+          email: profile.email,
         });
 
         // Remove from local state immediately
@@ -235,7 +210,7 @@ export default function MarketingDashboard() {
         setSavingId(null);
       }
     },
-    [profile, role, pricingModes, notes, discounts, calculateTotalPrice, calculateDiscountAmount]
+    [profile, pricingModes, notes, discounts, itemDiscounts, calculateTotalPrice, calculateDiscountAmount, mutateRequests]
   );
 
   // ---------- Render: loading ----------
@@ -308,9 +283,8 @@ export default function MarketingDashboard() {
                   <div className="flex flex-wrap gap-2">
                     <StatusBadge status={request.status} />
                     {request.branch && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-700 border border-blue-100 uppercase tracking-wider">
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
-                        {request.branch.name}
+                      <span className="inline-flex items-center rounded-full border border-blue-100 bg-blue-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-blue-700">
+                        Branch: {request.branch.name}
                       </span>
                     )}
                     <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 uppercase">

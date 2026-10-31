@@ -1,13 +1,15 @@
 'use client';
 
 import { createContext, useContext, useState, useCallback, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useBranch } from '@/hooks/useBranch';
 import { requireAuthUser } from '@/lib/db/client';
-import { requestsDb, paymentPromisesDb, priceListDb } from '@/lib/db';
+import { requestsDb } from '@/lib/db';
+import { supabase } from '@/lib/supabase';
 import { notificationService } from '@/lib/services/notification-service';
 import { activityLogsDb } from '@/lib/db';
-import type { CartItem, DbRequest, ClientType } from '@/types/types';
+import type { CartItem, DbRequest } from '@/types/types';
 
 type RequestContextType = {
   items: CartItem[];
@@ -26,36 +28,17 @@ type RequestContextType = {
 
 const RequestContext = createContext<RequestContextType | null>(null);
 
-async function calculateTotal(
-  items: CartItem[],
-  clientType: ClientType
-): Promise<number> {
-  // Cost Per Test clients have no upfront product pricing
-  if (clientType === 'cost_per_test') return 0;
-
-  const prices = await priceListDb.getAll();
-  const priceMap = new Map(prices.map(p => [p.product_id, p]));
-
-  return items.reduce((sum, item) => {
-    const price = priceMap.get(item.id);
-    if (!price) return sum;
-    const unitPrice = clientType === 'kso' ? price.price_kso : price.price_regular;
-    return sum + unitPrice * item.qty;
-  }, 0);
-}
-
 export default function RequestProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const { profile } = useAuth();
   const { activeBranchId } = useBranch();
+  const router = useRouter();
 
   const add = useCallback((id: string, name?: string) => {
     // Block clients from adding to cart if profile is incomplete
     if (profile?.role === 'client' && !profile?.profile_completed) {
       alert('Please complete your profile before adding items to your request.');
-      if (typeof window !== 'undefined') {
-        window.location.href = '/dashboard/profile';
-      }
+      router.push('/dashboard/profile');
       return;
     }
     setItems(prev => {
@@ -67,7 +50,7 @@ export default function RequestProvider({ children }: { children: React.ReactNod
       }
       return [...prev, { id, qty: 1, name }];
     });
-  }, [profile]);
+  }, [profile, router]);
 
   const remove = useCallback((id: string) => {
     setItems(prev => prev.filter(item => item.id !== id));
@@ -102,55 +85,19 @@ export default function RequestProvider({ children }: { children: React.ReactNod
 
     const user = await requireAuthUser();
 
-    // Check debt limit
-    if (profile?.debt_amount && profile?.debt_limit && profile.debt_amount > profile.debt_limit) {
-      if (!promise_date) {
-        throw new Error('Debt exceeds limit. Payment promise date is required.');
-      }
-
-      await paymentPromisesDb.create({
-        user_id: user.id,
-        user_email: user.email ?? undefined,
-        promise_date,
-        note: payment_note,
-      });
-    }
-
-    // Calculate price
-    const clientType = profile?.client_type ?? 'regular';
-    let totalPrice = 0;
-    try {
-      totalPrice = await calculateTotal(items, clientType);
-    } catch {
-      // Price calculation optional at submission; marketing will price later
-    }
-
-    // Create the request
-    const request = await requestsDb.create({
-      user_id: user.id,
-      user_email: user.email ?? profile?.email,
-      status: 'submitted',
-      priority,
-      total_price: totalPrice,
-      note: note ?? undefined,
-      created_by: user.id,
-      branch_id: activeBranchId !== 'ALL' ? activeBranchId : (profile?.branch_id ?? undefined),
+    const { data: requestId, error } = await supabase.rpc('rpc_submit_client_request', {
+      p_user_id: user.id,
+      p_branch_id: activeBranchId !== 'ALL' ? activeBranchId : profile?.branch_id ?? null,
+      p_priority: priority,
+      p_note: note ?? '',
+      p_promise_date: promise_date ?? null,
+      p_payment_note: payment_note ?? '',
+      p_items: items.map((item) => ({ product_id: item.id, quantity: item.qty })),
     });
+    if (error || !requestId) throw new Error(error?.message ?? 'Request submission failed');
 
-    // Create request items
-    const requestItems = items.map(item => ({
-      request_id: request.id,
-      product_id: item.id,
-      quantity: item.qty,
-      price_at_order: 0, // Marketing fills this at priced stage
-    }));
-
-    await requestsDb.createItems(requestItems);
-
-    // Link payment promise to request if created
-    if (promise_date && profile?.debt_amount && profile.debt_amount > (profile.debt_limit ?? 0)) {
-      // Promise was already created above; we could update it but it's not critical
-    }
+    const request = await requestsDb.getById(requestId);
+    if (!request) throw new Error('Submitted request could not be retrieved');
 
     // Notify marketing
     await notificationService.notifyRoles(['marketing', 'admin'], {
@@ -170,7 +117,7 @@ export default function RequestProvider({ children }: { children: React.ReactNod
       metadata: {
         item_count: items.length,
         total_quantity: itemCount,
-        total_price: totalPrice,
+        total_price: 0,
         priority,
       },
     });

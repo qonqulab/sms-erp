@@ -36,7 +36,7 @@ export default function StockDashboard() {
       try {
         const b = await branchesDb.getAll();
         setBranches(b);
-        const userBranchId = (profile as any)?.branch_id;
+        const userBranchId = profile?.branch_id;
         if (userBranchId) setSelectedBranch(userBranchId);
         else if (b.length > 0) setSelectedBranch(b[0].id);
       } catch {}
@@ -57,7 +57,11 @@ export default function StockDashboard() {
     }
   }, [selectedBranch]);
 
-  useEffect(() => { if (selectedBranch) refreshStock(); }, [selectedBranch, refreshStock]);
+  useEffect(() => {
+    if (!selectedBranch) return;
+    const timer = window.setTimeout(() => { void refreshStock(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [selectedBranch, refreshStock]);
 
   const stats = useMemo(() => {
     const lowStock = stock.filter(s => s.stock <= s.min_stock);
@@ -108,8 +112,8 @@ export default function StockDashboard() {
       ) : stock.length === 0 ? (
         <EmptyState title="No stock data" description="No products have been assigned to this branch yet." />
       ) : (
-        <div className="rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="overflow-x-auto rounded-2xl border border-gray-100 bg-white shadow-sm">
+          <table className="min-w-[34rem] w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50">
                 <th className="text-left font-medium text-gray-500 px-4 py-3">Product</th>
@@ -125,9 +129,9 @@ export default function StockDashboard() {
                 return (
                   <tr key={item.id} className={`${isOut ? 'bg-red-50/50' : isLow ? 'bg-yellow-50/50' : ''} transition-colors hover:bg-gray-50`}>
                     <td className="px-4 py-3">
-                      <p className="font-medium text-gray-900">{(item.product as any)?.name || item.product_id}</p>
-                      {(item.product as any)?.sku && (
-                        <p className="text-xs text-gray-400">{(item.product as any).sku}</p>
+                      <p className="font-medium text-gray-900">{item.product?.name || item.product_id}</p>
+                      {item.product?.sku && (
+                        <p className="text-xs text-gray-400">{item.product.sku}</p>
                       )}
                     </td>
                     <td className="px-4 py-3 text-right">

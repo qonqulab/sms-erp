@@ -9,9 +9,17 @@ import { claimService, authService } from '@/lib/services';
 import { requireAuthUser } from '@/lib/db';
 import { DashboardSkeleton } from '@/components/ui/LoadingSkeleton';
 import { ErrorState } from '@/components/ui/ErrorState';
-import type { CompanyRequest, PaymentPreferenceType } from '@/types/types';
+import type { Actor, CompanyRequest, PaymentPreferenceType } from '@/types/types';
 
 const fmt = (n: number) => 'Rp ' + n.toLocaleString('id-ID');
+const getErrorMessage = (error: unknown, fallback: string) => error instanceof Error ? error.message : fallback;
+const escapeHtml = (value: unknown) => String(value ?? '').replace(/[&<>'"]/g, (character) => ({
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  "'": '&#39;',
+  '"': '&quot;',
+}[character] ?? character));
 
 const PENDING_REASONS = [
   { label: 'Uang Belum Ada', value: 'uang_belum_ada' },
@@ -28,7 +36,7 @@ const STATUS_BADGE: Record<string, string> = {
 };
 
 export default function DisbursementsDashboard() {
-  const { profile, role, loading } = useAuth();
+  const { profile, loading } = useAuth();
   const { activeBranchId } = useBranch();
   const router = useRouter();
 
@@ -57,10 +65,11 @@ export default function DisbursementsDashboard() {
     }
   }, [loading, profile, router]);
 
-  const getActor = useCallback(async () => {
+  const getActor = useCallback(async (): Promise<Actor> => {
     const user = await requireAuthUser();
-    return { id: user.id, email: user.email ?? profile?.email, role: role ?? '' };
-  }, [profile, role]);
+    if (!profile) throw new Error('Active profile is required');
+    return { id: user.id, email: user.email ?? profile.email, role: profile.role, features: profile.features };
+  }, [profile]);
 
   const refresh = useCallback(async () => {
     setFetching(true);
@@ -71,15 +80,17 @@ export default function DisbursementsDashboard() {
         branch_id: activeBranchId
       });
       setRequests(data);
-    } catch (err: any) {
-      setError(err?.message || 'Failed to load');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Failed to load'));
     } finally {
       setFetching(false);
     }
   }, [activeBranchId]);
 
   useEffect(() => {
-    if (profile) refresh();
+    if (!profile) return;
+    const timer = window.setTimeout(() => { void refresh(); }, 0);
+    return () => window.clearTimeout(timer);
   }, [profile, refresh]);
 
   const filtered = requests.filter(r => {
@@ -101,12 +112,12 @@ export default function DisbursementsDashboard() {
         selectedReq.id,
         selectedReq,
         { pay_amount: payAmount, payment_method_used: payMethod, pending_reason: reason || undefined },
-        actor as any
+        actor
       );
       setSelectedReq(null);
       await refresh();
-    } catch (err: any) {
-      alert(err?.message || 'Disbursement failed');
+    } catch (err: unknown) {
+      alert(getErrorMessage(err, 'Disbursement failed'));
     } finally {
       setProcessing(false);
     }
@@ -116,10 +127,10 @@ export default function DisbursementsDashboard() {
   const handleTransferDone = async (id: string) => {
     try {
       const actor = await getActor();
-      await claimService.markTransferDone(id, actor as any);
+      await claimService.markTransferDone(id, actor);
       await refresh();
-    } catch (err: any) {
-      alert(err?.message || 'Failed');
+    } catch (err: unknown) {
+      alert(getErrorMessage(err, 'Failed'));
     }
   };
 
@@ -127,10 +138,10 @@ export default function DisbursementsDashboard() {
   const handleComplete = async (id: string) => {
     try {
       const actor = await getActor();
-      await claimService.completeClaim(id, actor as any);
+      await claimService.completeClaim(id, actor);
       await refresh();
-    } catch (err: any) {
-      alert(err?.message || 'Failed');
+    } catch (err: unknown) {
+      alert(getErrorMessage(err, 'Failed'));
     }
   };
 
@@ -139,12 +150,12 @@ export default function DisbursementsDashboard() {
     if (!issueReq || !issueNote.trim()) return;
     try {
       const actor = await getActor();
-      await claimService.flagPostClaimIssue(issueReq.id, issueNote, actor as any);
+      await claimService.flagPostClaimIssue(issueReq.id, issueNote, actor);
       setIssueReq(null);
       setIssueNote('');
       await refresh();
-    } catch (err: any) {
-      alert(err?.message || 'Failed');
+    } catch (err: unknown) {
+      alert(getErrorMessage(err, 'Failed'));
     }
   };
 
@@ -156,7 +167,7 @@ export default function DisbursementsDashboard() {
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Receipt - ${req.type === 'CLAIM' ? 'Klaim' : 'Pengajuan'}</title>
+        <title>Receipt - ${escapeHtml(req.type === 'CLAIM' ? 'Klaim' : 'Pengajuan')}</title>
         <style>
           * { margin: 0; padding: 0; box-sizing: border-box; }
           body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; padding: 40px; color: #1d1d1f; }
@@ -183,18 +194,18 @@ export default function DisbursementsDashboard() {
           <p>${req.type === 'CLAIM' ? 'Bukti Klaim (Reimbursement)' : 'Bukti Pengajuan Pembelian'}</p>
         </div>
         <div class="meta">
-          <div><div class="label">Nama Pengaju</div><div class="value">${req.creator?.name || '-'}</div></div>
-          <div><div class="label">Tanggal</div><div class="value">${new Date(req.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</div></div>
-          <div><div class="label">Metode Bayar</div><div class="value">${req.payment_preference}</div></div>
-          <div><div class="label">Status</div><div class="value">${req.status}</div></div>
+          <div><div class="label">Nama Pengaju</div><div class="value">${escapeHtml(req.creator?.name || '-')}</div></div>
+          <div><div class="label">Tanggal</div><div class="value">${escapeHtml(new Date(req.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }))}</div></div>
+          <div><div class="label">Metode Bayar</div><div class="value">${escapeHtml(req.payment_preference)}</div></div>
+          <div><div class="label">Status</div><div class="value">${escapeHtml(req.status)}</div></div>
         </div>
         <table>
           <thead><tr><th>No</th><th>Deskripsi</th><th>Unit</th><th>Qty</th><th>Harga/Unit</th><th>Total</th></tr></thead>
           <tbody>
             ${(req.items || []).map((item, i) => `
-              <tr><td>${i + 1}</td><td>${item.description}</td><td>${item.unit || '-'}</td><td>${item.quantity}</td><td>Rp ${item.price_per_unit.toLocaleString('id-ID')}</td><td>Rp ${item.total_price.toLocaleString('id-ID')}</td></tr>
+              <tr><td>${i + 1}</td><td>${escapeHtml(item.description)}</td><td>${escapeHtml(item.unit || '-')}</td><td>${escapeHtml(item.quantity)}</td><td>Rp ${escapeHtml(item.price_per_unit.toLocaleString('id-ID'))}</td><td>Rp ${escapeHtml(item.total_price.toLocaleString('id-ID'))}</td></tr>
             `).join('')}
-            <tr class="total-row"><td colspan="5" style="text-align:right;">GRAND TOTAL</td><td>Rp ${req.total_amount.toLocaleString('id-ID')}</td></tr>
+            <tr class="total-row"><td colspan="5" style="text-align:right;">GRAND TOTAL</td><td>Rp ${escapeHtml(req.total_amount.toLocaleString('id-ID'))}</td></tr>
           </tbody>
         </table>
         <div class="signatures">
@@ -202,7 +213,7 @@ export default function DisbursementsDashboard() {
           <div><div class="sig-line">Claim Officer</div></div>
           <div><div class="sig-line">Approved By</div></div>
         </div>
-        <div class="footer">Dicetak pada ${new Date().toLocaleString('id-ID')} — SMS ERP System</div>
+        <div class="footer">Dicetak pada ${escapeHtml(new Date().toLocaleString('id-ID'))} — SMS ERP System</div>
         <script>window.onload = function() { window.print(); }</script>
       </body>
       </html>

@@ -10,10 +10,13 @@ import { requireAuthUser } from '@/lib/db';
 import { DashboardSkeleton } from '@/components/ui/LoadingSkeleton';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { supabase } from '@/lib/supabase';
-import type { CompanyRequest, CompanyRequestItem, CompanyRequestType, PaymentPreferenceType, UserPaymentMethod } from '@/types/types';
+import type { Actor, CompanyRequest, CompanyRequestItem, CompanyRequestType, PaymentPreferenceType, UserPaymentMethod } from '@/types/types';
 
 // Format currency
 const fmt = (n: number) => 'Rp ' + n.toLocaleString('id-ID');
+const getErrorMessage = (error: unknown, fallback: string) => error instanceof Error ? error.message : fallback;
+type ClaimItemDraft = Omit<CompanyRequestItem, 'id' | 'request_id' | 'created_at'>;
+type ClaimItemField = keyof Pick<ClaimItemDraft, 'description' | 'unit' | 'quantity' | 'price_per_unit' | 'total_price' | 'receipt_url'>;
 
 // Status badge colors
 const STATUS_COLORS: Record<string, string> = {
@@ -35,7 +38,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 // Empty line item
-const emptyItem = (): Omit<CompanyRequestItem, 'id' | 'request_id' | 'created_at'> => ({
+const emptyItem = (): ClaimItemDraft => ({
   description: '',
   unit: 'pcs',
   quantity: 1,
@@ -45,7 +48,7 @@ const emptyItem = (): Omit<CompanyRequestItem, 'id' | 'request_id' | 'created_at
 });
 
 export default function ClaimsDashboard() {
-  const { profile, role, loading } = useAuth();
+  const { profile, loading } = useAuth();
   const { activeBranchId } = useBranch();
   const router = useRouter();
 
@@ -59,7 +62,7 @@ export default function ClaimsDashboard() {
   const [formType, setFormType] = useState<CompanyRequestType>('CLAIM');
   const [paymentPref, setPaymentPref] = useState<PaymentPreferenceType>('CASH');
   const [paymentPrefDetails, setPaymentPrefDetails] = useState('');
-  const [items, setItems] = useState<Omit<CompanyRequestItem, 'id' | 'request_id' | 'created_at'>[]>([emptyItem()]);
+  const [items, setItems] = useState<ClaimItemDraft[]>([emptyItem()]);
   const [submissionNote, setSubmissionNote] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [paymentMethods, setPaymentMethods] = useState<UserPaymentMethod[]>([]);
@@ -74,10 +77,11 @@ export default function ClaimsDashboard() {
     }
   }, [loading, profile, router]);
 
-  const getActor = useCallback(async (): Promise<{ id: string; email: string | undefined; role: string }> => {
+  const getActor = useCallback(async (): Promise<Actor> => {
+    if (!profile) throw new Error('Active profile is required');
     const user = await requireAuthUser();
-    return { id: user.id, email: user.email ?? profile?.email, role: role ?? '' };
-  }, [profile, role]);
+    return { id: user.id, email: user.email ?? profile.email, role: profile.role, features: profile.features };
+  }, [profile]);
 
   const refresh = useCallback(async () => {
     setFetching(true);
@@ -90,15 +94,17 @@ export default function ClaimsDashboard() {
         const { data: methods } = await supabase.from('user_payment_methods').select('*').eq('user_id', profile.id);
         if (methods) setPaymentMethods(methods as UserPaymentMethod[]);
       }
-    } catch (err: any) {
-      setError(err?.message || 'Failed to load requests');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Failed to load requests'));
     } finally {
       setFetching(false);
     }
   }, [profile]);
 
   useEffect(() => {
-    if (profile) refresh();
+    if (!profile) return;
+    const refreshTimer = window.setTimeout(() => void refresh(), 0);
+    return () => window.clearTimeout(refreshTimer);
   }, [profile, refresh]);
 
   const filteredRequests = useMemo(() =>
@@ -106,12 +112,15 @@ export default function ClaimsDashboard() {
   [requests, tab]);
 
   // Item management
-  const updateItem = (index: number, field: string, value: any) => {
+  const updateItem = (index: number, field: ClaimItemField, value: string | number) => {
     setItems(prev => {
       const updated = [...prev];
-      (updated[index] as any)[field] = value;
+      const current = updated[index];
+      if (!current) return prev;
+      const next = { ...current, [field]: value } as ClaimItemDraft;
+      updated[index] = next;
       if (field === 'quantity' || field === 'price_per_unit') {
-        updated[index].total_price = updated[index].quantity * updated[index].price_per_unit;
+        next.total_price = next.quantity * next.price_per_unit;
       }
       return updated;
     });
@@ -150,17 +159,17 @@ export default function ClaimsDashboard() {
           branch_id: activeBranchId,
           payment_preference: paymentPref,
           payment_preference_details: paymentPrefDetails,
-          items: items as any,
+          items,
           note: submissionNote,
         },
-        actor as any
+        actor
       );
       setShowForm(false);
       setItems([emptyItem()]);
       setSubmissionNote('');
       await refresh();
-    } catch (err: any) {
-      alert(err?.message || 'Submit failed');
+    } catch (err: unknown) {
+      alert(getErrorMessage(err, 'Submit failed'));
     } finally {
       setSubmitting(false);
     }
@@ -170,10 +179,10 @@ export default function ClaimsDashboard() {
   const handleCompleteClaim = async (requestId: string) => {
     try {
       const actor = await getActor();
-      await claimService.completeClaim(requestId, actor as any);
+      await claimService.completeClaim(requestId, actor);
       await refresh();
-    } catch (err: any) {
-      alert(err?.message || 'Complete claim failed');
+    } catch (err: unknown) {
+      alert(getErrorMessage(err, 'Complete claim failed'));
     }
   };
 
@@ -181,10 +190,10 @@ export default function ClaimsDashboard() {
   const handleAcceptNegotiation = async (requestId: string) => {
     try {
       const actor = await getActor();
-      await claimService.completeClaim(requestId, actor as any);
+      await claimService.completeClaim(requestId, actor);
       await refresh();
-    } catch (err: any) {
-      alert(err?.message || 'Accept failed');
+    } catch (err: unknown) {
+      alert(getErrorMessage(err, 'Accept failed'));
     }
   };
 
@@ -194,10 +203,10 @@ export default function ClaimsDashboard() {
     if (!reason) return;
     try {
       const actor = await getActor();
-      await claimService.rejectNegotiation(requestId, reason, actor as any);
+      await claimService.rejectNegotiation(requestId, reason, actor);
       await refresh();
-    } catch (err: any) {
-      alert(err?.message || 'Reject failed');
+    } catch (err: unknown) {
+      alert(getErrorMessage(err, 'Reject failed'));
     }
   };
 
@@ -205,10 +214,10 @@ export default function ClaimsDashboard() {
   const handleAcceptPartial = async (requestId: string, req: CompanyRequest) => {
     try {
       const actor = await getActor();
-      await claimService.acceptPartialProposal(requestId, req, actor as any);
+      await claimService.acceptPartialProposal(requestId, req, actor);
       await refresh();
-    } catch (err: any) {
-      alert(err?.message || 'Accept failed');
+    } catch (err: unknown) {
+      alert(getErrorMessage(err, 'Accept failed'));
     }
   };
 
@@ -218,10 +227,10 @@ export default function ClaimsDashboard() {
     if (!reason) return;
     try {
       const actor = await getActor();
-      await claimService.rejectPartialProposal(requestId, reason, actor as any);
+      await claimService.rejectPartialProposal(requestId, reason, actor);
       await refresh();
-    } catch (err: any) {
-      alert(err?.message || 'Reject failed');
+    } catch (err: unknown) {
+      alert(getErrorMessage(err, 'Reject failed'));
     }
   };
 
@@ -406,8 +415,8 @@ export default function ClaimsDashboard() {
                           try {
                             const url = await uploadReceipt(file);
                             updateItem(i, 'receipt_url', url);
-                          } catch (err: any) {
-                            alert(err?.message || 'Upload failed');
+                          } catch (err: unknown) {
+                            alert(getErrorMessage(err, 'Upload failed'));
                           }
                         }}
                         className="w-full text-xs file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-apple-blue/10 file:text-apple-blue hover:file:bg-apple-blue/20 transition-all"

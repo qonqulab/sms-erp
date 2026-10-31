@@ -9,12 +9,13 @@ import { claimService, authService } from '@/lib/services';
 import { requireAuthUser } from '@/lib/db';
 import { DashboardSkeleton } from '@/components/ui/LoadingSkeleton';
 import { ErrorState } from '@/components/ui/ErrorState';
-import type { CompanyRequest } from '@/types/types';
+import type { Actor, CompanyRequest } from '@/types/types';
 
 const fmt = (n: number) => 'Rp ' + n.toLocaleString('id-ID');
+const getErrorMessage = (error: unknown, fallback: string) => error instanceof Error ? error.message : fallback;
 
 export default function ClaimApprovalsDashboard() {
-  const { profile, role, loading } = useAuth();
+  const { profile, loading } = useAuth();
   const { activeBranchId } = useBranch();
   const router = useRouter();
 
@@ -35,10 +36,11 @@ export default function ClaimApprovalsDashboard() {
     }
   }, [loading, profile, router]);
 
-  const getActor = useCallback(async () => {
+  const getActor = useCallback(async (): Promise<Actor> => {
     const user = await requireAuthUser();
-    return { id: user.id, email: user.email ?? profile?.email, role: role ?? '' };
-  }, [profile, role]);
+    if (!profile) throw new Error('Active profile is required');
+    return { id: user.id, email: user.email ?? profile.email, role: profile.role, features: profile.features };
+  }, [profile]);
 
   const refresh = useCallback(async () => {
     setFetching(true);
@@ -46,15 +48,17 @@ export default function ClaimApprovalsDashboard() {
     try {
       const data = await claimService.getRequests({ status: 'SUBMITTED', branch_id: activeBranchId });
       setRequests(data);
-    } catch (err: any) {
-      setError(err?.message || 'Failed to load');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Failed to load'));
     } finally {
       setFetching(false);
     }
   }, [activeBranchId]);
 
   useEffect(() => {
-    if (profile) refresh();
+    if (!profile) return;
+    const timer = window.setTimeout(() => { void refresh(); }, 0);
+    return () => window.clearTimeout(timer);
   }, [profile, refresh]);
 
   const handleApprove = async () => {
@@ -62,13 +66,13 @@ export default function ClaimApprovalsDashboard() {
     setProcessing(true);
     try {
       const actor = await getActor();
-      await claimService.approveRequest(selectedReq.id, modalNote || undefined, actor as any);
+      await claimService.approveRequest(selectedReq.id, modalNote || undefined, actor);
       setModalMode(null);
       setSelectedReq(null);
       setModalNote('');
       await refresh();
-    } catch (err: any) {
-      alert(err?.message || 'Approval failed');
+    } catch (err: unknown) {
+      alert(getErrorMessage(err, 'Approval failed'));
     } finally {
       setProcessing(false);
     }
@@ -79,13 +83,13 @@ export default function ClaimApprovalsDashboard() {
     setProcessing(true);
     try {
       const actor = await getActor();
-      await claimService.rejectRequest(selectedReq.id, modalNote, actor as any);
+      await claimService.rejectRequest(selectedReq.id, modalNote, actor);
       setModalMode(null);
       setSelectedReq(null);
       setModalNote('');
       await refresh();
-    } catch (err: any) {
-      alert(err?.message || 'Rejection failed');
+    } catch (err: unknown) {
+      alert(getErrorMessage(err, 'Rejection failed'));
     } finally {
       setProcessing(false);
     }

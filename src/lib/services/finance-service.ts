@@ -90,41 +90,20 @@ export const financeService = {
   },
 
   async markInvoicePaid(invoiceId: string, paymentMethod: string, paymentRef: string, actor: Actor): Promise<Invoice> {
-    const invoice = await invoicesDb.update(invoiceId, {
-      status: 'paid',
-      paid_at: new Date().toISOString(),
-      payment_method: paymentMethod,
-      payment_ref: paymentRef,
-      updated_by: actor.id,
+    const { error: paymentError } = await supabase.rpc('rpc_mark_invoice_paid', {
+      p_invoice_id: invoiceId,
+      p_user_id: actor.id,
+      p_payment_method: paymentMethod,
+      p_payment_ref: paymentRef,
     });
+    if (paymentError) throw new Error(paymentError.message);
 
-    const { data: existingTx, error: existingTxError } = await supabase
-      .from('financial_transactions')
-      .select('id')
-      .eq('reference_id', invoiceId)
-      .eq('reference_table', 'invoices')
-      .maybeSingle();
-
-    if (existingTxError) throw new Error(existingTxError.message);
-
-    if (!existingTx) {
-      if (!invoice.branch_id) throw new Error('Invoice must belong to a branch before it can be paid');
-
-      const { error: transactionError } = await supabase.from('financial_transactions').insert({
-        branch_id: invoice.branch_id,
-        transaction_type: 'invoice_payment',
-        direction: 'inflow',
-        amount: invoice.total,
-        reference_id: invoice.id,
-        reference_table: 'invoices',
-        description: `Payment for invoice ${invoice.invoice_number} via ${paymentMethod} (ref: ${paymentRef})`,
-        payment_method: paymentMethod,
-        payment_ref: paymentRef,
-        recorded_by: actor.id,
-      });
-
-      if (transactionError) throw new Error(transactionError.message);
-    }
+    const { data: invoice, error: invoiceError } = await supabase
+      .from('invoices')
+      .select('*')
+      .eq('id', invoiceId)
+      .single();
+    if (invoiceError || !invoice) throw new Error(invoiceError?.message ?? 'Paid invoice could not be retrieved');
 
     await activityLogsDb.create({
       user_id: actor.id,
@@ -135,7 +114,7 @@ export const financeService = {
       metadata: { payment_method: paymentMethod, payment_ref: paymentRef },
     });
 
-    return invoice;
+    return invoice as Invoice;
   },
 
   async runMonthlyClosing(month: number, year: number, branchId: string, actor: Actor): Promise<MonthlyClosing> {

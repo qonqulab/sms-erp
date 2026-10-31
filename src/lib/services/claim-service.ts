@@ -2,7 +2,6 @@ import { supabase } from '@/lib/supabase';
 import type { 
   CompanyRequest, 
   CompanyRequestItem, 
-  CompanyRequestHistory,
   Actor,
   PaymentPreferenceType,
   CompanyRequestType,
@@ -22,58 +21,22 @@ export const claimService = {
     },
     actor: Actor
   ): Promise<string> {
-    // Basic validations
-    if (!data.items || data.items.length === 0) {
-      throw new Error('A request must have at least one item');
-    }
-    if (data.type === 'CLAIM') {
-        const missingReceipt = data.items.some(i => !i.receipt_url);
-        if (missingReceipt) {
-            throw new Error('All items in a Reimbursement Claim must have receipt photos.');
-        }
-    }
-
-    const total_amount = data.items.reduce((sum, item) => sum + item.total_price, 0);
-
-    // 1. Insert header
-    const { data: request, error: reqError } = await supabase
-      .from('company_requests')
-      .insert({
-        created_by: actor.id,
-        branch_id: data.branch_id,
-        type: data.type,
-        status: 'SUBMITTED',
-        payment_preference: data.payment_preference,
-        total_amount,
-        paid_amount: 0
-      } as any)
-      .select('id')
-      .single();
-
-    if (reqError) throw new Error(`Create Request failed: ${reqError.message}`);
-
-    const requestId = request.id;
-
-    // 2. Insert items
-    const itemsToInsert = data.items.map(item => ({
-      ...item,
-      request_id: requestId
-    }));
-
-    const { error: itemsError } = await supabase
-      .from('company_request_items')
-      .insert(itemsToInsert as any);
-
-    if (itemsError) throw new Error(`Add items failed: ${itemsError.message}`);
-
-    // 3. Audit History
-    await supabase.from('company_request_history').insert({
-      request_id: requestId,
-      actor_id: actor.id,
-      action: 'CREATED',
-      note: data.note ? `Catatan dari pembuat klaim: ${data.note}` : `Requested ${data.type} for ${total_amount.toLocaleString()}`
-    } as any);
-
+    const { data: requestId, error } = await supabase.rpc('rpc_submit_company_request', {
+      p_user_id: actor.id,
+      p_branch_id: data.branch_id,
+      p_type: data.type,
+      p_payment_preference: data.payment_preference,
+      p_payment_preference_details: data.payment_preference_details ?? '',
+      p_note: data.note ?? '',
+      p_items: data.items.map((item) => ({
+        description: item.description,
+        unit: item.unit ?? '',
+        quantity: item.quantity,
+        price_per_unit: item.price_per_unit,
+        receipt_url: item.receipt_url ?? '',
+      })),
+    });
+    if (error || !requestId) throw new Error(error?.message ?? 'Create request failed');
     return requestId;
   },
 
@@ -112,51 +75,12 @@ export const claimService = {
 
   // APPROVER LOGIC: Approve
   async approveRequest(id: string, note: string | undefined, actor: Actor): Promise<void> {
-    if (!['owner', 'director', 'admin', 'claim_officer'].includes(actor.role)) {
-      throw new Error('Unauthorized to approve claims');
-    }
-
-    const { error } = await supabase
-      .from('company_requests')
-      .update({
-        status: 'APPROVED',
-        approved_by: actor.id,
-        approval_date: new Date().toISOString(),
-        approval_note: note
-      } as any)
-      .eq('id', id)
-      .eq('status', 'SUBMITTED');
-
-    if (error) throw new Error(`Approve failed: ${error.message}`);
-
-    await supabase.from('company_request_history').insert({
-      request_id: id,
-      actor_id: actor.id,
-      action: 'APPROVED',
-      note: note || 'Approved by Executive'
-    } as any);
+    await transitionClaim(id, actor, 'APPROVE', note);
   },
 
   // APPROVER LOGIC: Reject
   async rejectRequest(id: string, reason: string, actor: Actor): Promise<void> {
-    if (!reason.trim()) throw new Error('Reject reason is required');
-
-    const { error } = await supabase
-      .from('company_requests')
-      .update({
-        status: 'REJECTED',
-        reject_reason: reason
-      } as any)
-      .eq('id', id);
-
-    if (error) throw new Error(`Reject failed: ${error.message}`);
-
-    await supabase.from('company_request_history').insert({
-      request_id: id,
-      actor_id: actor.id,
-      action: 'REJECTED',
-      note: reason
-    } as any);
+    await transitionClaim(id, actor, 'REJECT', reason);
   },
 
   // OFFICER LOGIC: Process disbursement (Partial, Negotiation, Full)
@@ -170,184 +94,57 @@ export const claimService = {
     },
     actor: Actor
   ): Promise<void> {
-    const { pay_amount, payment_method_used, pending_reason } = actionData;
-    const previousPaid = currentRequest.paid_amount || 0;
-    const balance = currentRequest.total_amount - previousPaid;
-
-    let newStatus: CompanyRequestStatus = 'PENDING';
-    let historyAction = 'FUNDS_PROCESSED';
-    let newPaidAmount = previousPaid;
-    let proposedAmount: number | null = null;
-
-    // Conflict Check
-    const methodConflict = payment_method_used !== currentRequest.payment_preference;
-    
-    if (pay_amount < balance) {
-      newStatus = 'PENDING';
-      historyAction = 'PARTIAL_PAYMENT_PROPOSED';
-      proposedAmount = pay_amount;
-    } else {
-      // Full Payment
-      newPaidAmount = previousPaid + pay_amount;
-      if (methodConflict) {
-        // Need user negotiation
-        newStatus = 'PENDING';
-        historyAction = 'PAYMENT_NEGOTIATION';
-      } else if (payment_method_used === 'CASH') {
-        newStatus = 'READY_FOR_CASH';
-        historyAction = 'CASH_READY';
-      } else if (payment_method_used === 'TRANSFER') {
-        newStatus = 'PENDING'; // Still needs to perform the transfer
-        historyAction = 'QUEUEING_TRANSFER';
-      }
-    }
-
-    const { error } = await supabase
-      .from('company_requests')
-      .update({
-        status: newStatus,
-        paid_amount: newPaidAmount,
-        proposed_amount: proposedAmount,
-        payment_method_offered: methodConflict ? payment_method_used : null,
-        pending_reason: pending_reason || (pay_amount < balance ? `Waiting to pay remaining ${balance - pay_amount}` : null)
-      } as any)
-      .eq('id', id);
-
-    if (error) throw new Error(`Disbursement failed: ${error.message}`);
-
-    await supabase.from('company_request_history').insert({
-      request_id: id,
-      actor_id: actor.id,
-      action: historyAction,
-      note: `Amount: ${pay_amount}. Method: ${payment_method_used}. ${pending_reason ? '(' + pending_reason + ')' : ''}`
-    } as any);
+    void currentRequest;
+    await transitionClaim(id, actor, 'DISBURSE', actionData.pending_reason, actionData.pay_amount, actionData.payment_method_used);
   },
 
   // OFFICER LOGIC: Mark Transfer Done
   async markTransferDone(id: string, actor: Actor): Promise<void> {
-    const { error } = await supabase
-      .from('company_requests')
-      .update({
-        status: 'COMPLETED',
-        pending_reason: null
-      } as any)
-      .eq('id', id);
-
-    if (error) throw new Error(`Mark Transfer Done failed: ${error.message}`);
-
-    await supabase.from('company_request_history').insert({
-      request_id: id,
-      actor_id: actor.id,
-      action: 'TRANSFER_COMPLETED',
-      note: 'Transfer has been successfully sent to the employee.'
-    } as any);
+    await transitionClaim(id, actor, 'TRANSFER_DONE');
   },
 
   // EMPLOYEE LOGIC: Accept Partial Proposal
   async acceptPartialProposal(id: string, currentRequest: CompanyRequest, actor: Actor): Promise<void> {
-    const proposed = currentRequest.proposed_amount;
-    if (!proposed || proposed <= 0) throw new Error('No partial payment proposed.');
-    const newPaidAmount = (currentRequest.paid_amount || 0) + proposed;
-    
-    const { error } = await supabase
-      .from('company_requests')
-      .update({
-        paid_amount: newPaidAmount,
-        proposed_amount: null,
-        status: 'PENDING',
-        pending_reason: `Waiting to pay remaining ${currentRequest.total_amount - newPaidAmount}`
-      } as any)
-      .eq('id', id);
-
-    if (error) throw new Error(`Accept Partial failed: ${error.message}`);
-
-    await supabase.from('company_request_history').insert({
-      request_id: id,
-      actor_id: actor.id,
-      action: 'PARTIAL_PAYMENT_ACCEPTED',
-      note: `Employee accepted partial payment of ${proposed}`
-    } as any);
+    void currentRequest;
+    await transitionClaim(id, actor, 'ACCEPT_PARTIAL');
   },
 
   // EMPLOYEE LOGIC: Reject Partial Proposal
   async rejectPartialProposal(id: string, reason: string, actor: Actor): Promise<void> {
-    const { error } = await supabase
-      .from('company_requests')
-      .update({
-        proposed_amount: null,
-        status: 'PENDING',
-        pending_reason: `Employee rejected partial payment: ${reason}`
-      } as any)
-      .eq('id', id);
-
-    if (error) throw new Error(`Reject Partial failed: ${error.message}`);
-
-    await supabase.from('company_request_history').insert({
-      request_id: id,
-      actor_id: actor.id,
-      action: 'PARTIAL_PAYMENT_REJECTED',
-      note: reason
-    } as any);
+    await transitionClaim(id, actor, 'REJECT_PARTIAL', reason);
   },
 
   // EMPLOYEE/OFFICER LOGIC: Accept Negotiation or Ready Cash (Complete Claim)
   async completeClaim(id: string, actor: Actor): Promise<void> {
-    const { error } = await supabase
-      .from('company_requests')
-      .update({
-        status: 'COMPLETED',
-        payment_method_offered: null,
-        pending_reason: null
-      } as any)
-      .eq('id', id);
-
-    if (error) throw new Error(`Complete Claim failed: ${error.message}`);
-
-    await supabase.from('company_request_history').insert({
-      request_id: id,
-      actor_id: actor.id,
-      action: 'CLAIMED',
-      note: 'Employee has successfully received the funds and claim is closed.'
-    } as any);
+    await transitionClaim(id, actor, 'COMPLETE');
   },
 
   // EMPLOYEE LOGIC: Reject Negotiation
   async rejectNegotiation(id: string, reason: string, actor: Actor): Promise<void> {
-    const { error } = await supabase
-      .from('company_requests')
-      .update({
-        status: 'PENDING',
-        pending_reason: `Employee rejected payment method: ${reason}`
-      } as any)
-      .eq('id', id);
-
-    if (error) throw new Error(`Reject Negotiation failed: ${error.message}`);
-
-    await supabase.from('company_request_history').insert({
-      request_id: id,
-      actor_id: actor.id,
-      action: 'NEGOTIATION_REJECTED',
-      note: reason
-    } as any);
+    await transitionClaim(id, actor, 'REJECT_NEGOTIATION', reason);
   },
 
   // OFFICER LOGIC: Flag Post-Claim Issue
   async flagPostClaimIssue(id: string, issueNote: string, actor: Actor): Promise<void> {
-    const { error } = await supabase
-      .from('company_requests')
-      .update({
-        post_claim_issue: issueNote
-      } as any)
-      .eq('id', id)
-      .eq('status', 'COMPLETED');
-
-    if (error) throw new Error(`Flag Issue failed: ${error.message}`);
-
-    await supabase.from('company_request_history').insert({
-      request_id: id,
-      actor_id: actor.id,
-      action: 'ISSUE_FLAGGED',
-      note: issueNote
-    } as any);
+    await transitionClaim(id, actor, 'FLAG_ISSUE', issueNote);
   }
 };
+
+async function transitionClaim(
+  requestId: string,
+  actor: Actor,
+  action: string,
+  note?: string,
+  amount?: number,
+  paymentMethod?: PaymentPreferenceType
+): Promise<void> {
+  const { error } = await supabase.rpc('rpc_transition_company_request', {
+    p_request_id: requestId,
+    p_user_id: actor.id,
+    p_action: action,
+    p_note: note ?? null,
+    p_amount: amount ?? null,
+    p_payment_method: paymentMethod ?? null,
+  });
+  if (error) throw new Error(error.message);
+}

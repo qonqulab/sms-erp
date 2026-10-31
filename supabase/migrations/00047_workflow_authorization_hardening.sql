@@ -85,23 +85,23 @@ BEGIN
     RETURN NEW;
   END IF;
 
-  v_allowed := CASE v_role
-    WHEN 'client' THEN OLD.user_id = v_actor
+  v_allowed := CASE
+    WHEN v_role = 'client' THEN OLD.user_id = v_actor
       AND ((OLD.status IN ('submitted', 'priced', 'approved') AND NEW.status = 'cancelled')
         OR (OLD.status = 'delivered' AND NEW.status IN ('completed', 'issue')))
-    WHEN 'marketing' THEN (OLD.status = 'submitted' AND NEW.status = 'priced')
+    WHEN v_role = 'marketing' THEN (OLD.status = 'submitted' AND NEW.status = 'priced')
       OR (
         OLD.status = 'priced'
         AND NEW.status IN ('approved', 'rejected')
         AND current_setting('app.auto_approve_transition', true) = 'enabled'
       )
-    WHEN 'boss' THEN OLD.status = 'priced' AND NEW.status IN ('approved', 'rejected')
-    WHEN 'finance' THEN OLD.status = 'approved' AND NEW.status = 'invoice_ready'
-    WHEN 'warehouse' THEN (OLD.status = 'invoice_ready' AND NEW.status = 'preparing')
+    WHEN v_role = 'boss' THEN OLD.status = 'priced' AND NEW.status IN ('approved', 'rejected')
+    WHEN v_role = 'finance' THEN OLD.status = 'approved' AND NEW.status = 'invoice_ready'
+    WHEN v_role = 'warehouse' THEN (OLD.status = 'invoice_ready' AND NEW.status = 'preparing')
       OR (OLD.status = 'preparing' AND NEW.status = 'ready')
     WHEN v_can_deliver THEN (OLD.status = 'ready' AND NEW.status = 'on_delivery')
       OR (OLD.status = 'on_delivery' AND NEW.status = 'delivered')
-    WHEN 'admin' THEN (OLD.status = 'issue' AND NEW.status = 'resolved')
+    WHEN v_role = 'admin' THEN (OLD.status = 'issue' AND NEW.status = 'resolved')
       OR (OLD.status = 'delivered' AND NEW.status IN ('resolved', 'completed'))
     ELSE false
   END;

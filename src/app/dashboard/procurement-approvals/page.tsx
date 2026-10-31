@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { canAccessRoute } from '@/lib/permissions';
 import { authService } from '@/lib/services';
 import { purchaseRequestsDb } from '@/lib/db';
+import { supabase } from '@/lib/supabase';
 import { formatCurrency, formatDate } from '@/lib/format-utils';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -45,18 +46,23 @@ export default function ProcurementApprovalsPage() {
   }, [profile]);
 
   useEffect(() => {
-    if (profile) loadRequests();
+    if (!profile) return;
+    const timer = window.setTimeout(() => { void loadRequests(); }, 0);
+    return () => window.clearTimeout(timer);
   }, [profile, loadRequests]);
 
   const handleApprove = async (prId: string) => {
     if (!confirm('Are you sure you want to approve this purchase request?')) return;
+    if (!profile) return;
     setProcessingId(prId);
     try {
-      await purchaseRequestsDb.update(prId, {
-        status: 'approved',
-        approved_by: profile?.id,
-        approved_at: new Date().toISOString()
+      const { error } = await supabase.rpc('rpc_decide_purchase_request', {
+        p_purchase_request_id: prId,
+        p_user_id: profile.id,
+        p_decision: 'approved',
+        p_rejection_reason: null,
       });
+      if (error) throw new Error(error.message);
       setRequests(prev => prev.filter(r => r.id !== prId));
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Error approving PR');
@@ -69,13 +75,17 @@ export default function ProcurementApprovalsPage() {
     const reason = prompt('Please provide a reason for rejecting this request:');
     if (reason === null) return; // cancelled
     if (!reason.trim()) return alert('Rejection reason is mandatory.');
+    if (!profile) return;
 
     setProcessingId(prId);
     try {
-      await purchaseRequestsDb.update(prId, {
-        status: 'rejected' as any, // if cancelled is used in DB, 'cancelled' or 'rejected'. Let's check type.
-        rejection_reason: reason
+      const { error } = await supabase.rpc('rpc_decide_purchase_request', {
+        p_purchase_request_id: prId,
+        p_user_id: profile.id,
+        p_decision: 'rejected',
+        p_rejection_reason: reason.trim(),
       });
+      if (error) throw new Error(error.message);
       setRequests(prev => prev.filter(r => r.id !== prId));
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Error rejecting PR');
@@ -109,7 +119,7 @@ export default function ProcurementApprovalsPage() {
                   </p>
                   {pr.notes && (
                     <div className="mt-2 bg-gray-50 p-2.5 rounded-lg border border-gray-100 text-sm text-gray-700 italic">
-                      "{pr.notes}"
+                      &ldquo;{pr.notes}&rdquo;
                     </div>
                   )}
                 </div>

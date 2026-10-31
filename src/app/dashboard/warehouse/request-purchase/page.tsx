@@ -6,7 +6,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { canAccessRoute } from '@/lib/permissions';
 import { authService } from '@/lib/services';
 import { supabase } from '@/lib/supabase';
-import { purchaseRequestsDb } from '@/lib/db';
 import type { Product } from '@/types/types';
 import { DashboardSkeleton } from '@/components/ui/LoadingSkeleton';
 
@@ -70,7 +69,9 @@ function RequestPurchaseContent() {
   }, [initialProductId]);
 
   useEffect(() => {
-    if (profile) loadProducts();
+    if (!profile) return;
+    const timer = window.setTimeout(() => { void loadProducts(); }, 0);
+    return () => window.clearTimeout(timer);
   }, [profile, loadProducts]);
 
   const handleProductChange = (index: number, productId: string) => {
@@ -107,29 +108,20 @@ function RequestPurchaseContent() {
 
     setSubmitting(true);
     try {
-      const totalEstimated = items.reduce((sum, item) => sum + (item.quantity * item.estimated_price), 0);
-      
-      // Create Header
-      const pr = await purchaseRequestsDb.create({
-        branch_id: profile.branch_id,
-        requested_by: profile.id,
-        title: title || 'Procurement Request',
-        notes: notes || undefined,
-        total_estimated: totalEstimated
+      const { error } = await supabase.rpc('rpc_submit_purchase_request', {
+        p_branch_id: profile.branch_id,
+        p_user_id: profile.id,
+        p_title: title || 'Procurement Request',
+        p_notes: notes,
+        p_items: items.map((item) => ({
+          product_id: item.product_id || null,
+          item_name: item.item_name,
+          quantity: item.quantity,
+          unit: item.unit,
+          estimated_price: item.estimated_price,
+        })),
       });
-
-      // Create Items
-      const itemsToInsert = items.map(item => ({
-        purchase_request_id: pr.id,
-        product_id: item.product_id || null,
-        item_name: item.item_name,
-        quantity: item.quantity,
-        unit: item.unit,
-        estimated_price: item.estimated_price
-      }));
-
-      const { error: itemsError } = await supabase.from('purchase_request_items').insert(itemsToInsert);
-      if (itemsError) throw itemsError;
+      if (error) throw new Error(error.message);
 
       alert('Procurement request submitted successfully! Menunggu approval dari Supervisor.');
       router.push('/dashboard/warehouse/inventory');
@@ -260,9 +252,9 @@ function RequestPurchaseContent() {
                   <button 
                     type="button" onClick={() => removeItem(index)}
                     disabled={items.length === 1}
-                    className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-30"
+                    className="mt-5 rounded-lg px-2 py-2 text-xs font-semibold text-gray-500 transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-30"
                   >
-                    🗑️
+                    Remove
                   </button>
                 </div>
               </div>

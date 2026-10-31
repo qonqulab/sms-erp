@@ -1,11 +1,13 @@
 import { supabase } from '../supabase';
 import type { CmsSettings, CmsNews, CmsEvent, CmsPartner, CmsSolution } from '@/types/types';
 
-function throwOnError<T>(result: { data: T | null; error: any }, fallback?: any): T {
+type QueryError = { message: string } | null;
+
+function throwOnError<T>(result: { data: T | null; error: QueryError }, fallback?: T): T {
   if (result.error) {
     if (String(result.error).includes('Failed to fetch') && fallback !== undefined) {
       console.warn('CMS Network fetch failed, using fallback data');
-      return fallback as T;
+      return fallback;
     }
     throw new Error(result.error.message);
   }
@@ -27,14 +29,16 @@ export const cmsService = {
 
       if (error) throw new Error(error.message);
       return data;
-    } catch (err: any) {
-      console.warn('getSettings error:', err?.message || String(err));
+    } catch (err: unknown) {
+      console.warn('getSettings error:', err instanceof Error ? err.message : String(err));
       return null;
     }
   },
 
   async updateSettings(updates: Partial<CmsSettings>): Promise<CmsSettings> {
-    const { employee_of_month, updated_at, ...cleanUpdates } = updates as any;
+    const { employee_of_month, updated_at, ...cleanUpdates } = updates;
+    void employee_of_month;
+    void updated_at;
     return throwOnError(
       await supabase
         .from('cms_settings')
@@ -68,7 +72,8 @@ export const cmsService = {
   },
 
   async updateNews(id: string, updates: Partial<CmsNews>): Promise<CmsNews> {
-    const { creator, ...cleanUpdates } = updates as any;
+    const { creator, ...cleanUpdates } = updates;
+    void creator;
     return throwOnError(
       await supabase.from('cms_news').update(cleanUpdates).eq('id', id).select('*').single()
     );
@@ -98,7 +103,8 @@ export const cmsService = {
   },
 
   async updateEvent(id: string, updates: Partial<CmsEvent>): Promise<CmsEvent> {
-    const { creator, ...cleanUpdates } = updates as any;
+    const { creator, ...cleanUpdates } = updates;
+    void creator;
     return throwOnError(
       await supabase.from('cms_events').update(cleanUpdates).eq('id', id).select('*').single()
     );
